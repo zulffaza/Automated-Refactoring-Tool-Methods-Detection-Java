@@ -1,10 +1,12 @@
 package com.finalproject.automated.refactoring.tool.methods.detection.java.service.impl;
 
 import com.finalproject.automated.refactoring.tool.files.detection.model.FileModel;
+import com.finalproject.automated.refactoring.tool.methods.detection.java.service.StartIndexAnalysis;
 import com.finalproject.automated.refactoring.tool.methods.detection.model.IndexModel;
 import com.finalproject.automated.refactoring.tool.methods.detection.service.MethodAnalysis;
 import com.finalproject.automated.refactoring.tool.model.MethodModel;
 import com.finalproject.automated.refactoring.tool.model.PropertyModel;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
@@ -25,11 +27,13 @@ import java.util.stream.Collectors;
 @Service
 public class JavaMethodAnalysis implements MethodAnalysis {
 
+    @Autowired
+    private StartIndexAnalysis startIndexAnalysis;
+
     private static final String OPEN_PARENTHESES = "(";
     private static final String CLOSE_PARENTHESES = ")";
     private static final String OPEN_BRACES = "{";
     private static final String CLOSE_BRACES = "}";
-    private static final String SEMICOLON = ";";
     private static final String OPEN_PARENTHESES_DELIMITER = "\\" + OPEN_PARENTHESES;
     private static final String CLOSE_PARENTHESES_DELIMITER = "\\" + CLOSE_PARENTHESES;
     private static final String AT = "@";
@@ -52,7 +56,7 @@ public class JavaMethodAnalysis implements MethodAnalysis {
         MethodModel methodModel = MethodModel.builder().build();
 
         try {
-            extendStartIndex(fileModel.getContent(), indexModel);
+            startIndexAnalysis.analysis(fileModel.getContent(), indexModel);
             anaysisMethodAttributes(fileModel, indexModel, methodModel);
             analysisMethodBody(fileModel.getContent(), indexModel, methodModel);
             addToResult(fileModel.getFilename(), methodModel, result);
@@ -62,43 +66,6 @@ public class JavaMethodAnalysis implements MethodAnalysis {
         }
 
         return null;
-    }
-
-    private void extendStartIndex(String content, IndexModel indexModel) {
-        Integer index = indexModel.getStart();
-        Stack<String> stack = new Stack<>();
-
-        while (!isValid(stack, content.substring(index, index + SECOND_INDEX)))
-            index--;
-
-        indexModel.setStart(++index);
-    }
-
-    private Boolean isValid(Stack<String> stack, String string) {
-        ifParams(stack, string);
-        return validate(stack, string);
-    }
-
-    private void ifParams(Stack<String> stack, String string) {
-        switch (string) {
-            case CLOSE_PARENTHESES:
-                stack.push(string);
-                break;
-            case OPEN_PARENTHESES:
-                stack.pop();
-                break;
-        }
-    }
-
-    private Boolean validate(Stack<String> stack, String string) {
-        if (!stack.empty())
-            return Boolean.FALSE;
-        else
-            return isEOS(string);
-    }
-
-    private Boolean isEOS(String string) {
-        return string.equals(SEMICOLON) || string.equals(CLOSE_BRACES) || string.equals(OPEN_BRACES);
     }
 
     private void anaysisMethodAttributes(FileModel fileModel, IndexModel indexModel, MethodModel methodModel) {
