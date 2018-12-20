@@ -5,6 +5,7 @@ import com.finalproject.automated.refactoring.tool.methods.detection.java.servic
 import com.finalproject.automated.refactoring.tool.methods.detection.java.service.MethodBodyAnalysis;
 import com.finalproject.automated.refactoring.tool.methods.detection.java.service.StartIndexAnalysis;
 import com.finalproject.automated.refactoring.tool.methods.detection.model.IndexModel;
+import com.finalproject.automated.refactoring.tool.methods.detection.service.util.MethodsDetectionUtil;
 import com.finalproject.automated.refactoring.tool.model.MethodModel;
 import com.finalproject.automated.refactoring.tool.model.PropertyModel;
 import org.junit.Before;
@@ -28,6 +29,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.when;
 
 /**
  * @author fazazulfikapp
@@ -51,6 +53,9 @@ public class JavaMethodAnalysisTest {
 
     @MockBean
     private MethodBodyAnalysis methodBodyAnalysis;
+
+    @MockBean
+    private MethodsDetectionUtil methodsDetectionUtil;
 
     private static final Integer FIRST_INDEX = 0;
     private static final Integer SECOND_INDEX = 1;
@@ -148,6 +153,9 @@ public class JavaMethodAnalysisTest {
             methodModel.setBody("this.name = name;");
             return null;
         }).when(methodBodyAnalysis).analysis(eq(fileModel.getContent()), eq(nonConstructorIndexModel), any(MethodModel.class));
+
+        when(methodsDetectionUtil.getMethodKey(fileModel))
+                .thenReturn(key);
     }
 
     @Test

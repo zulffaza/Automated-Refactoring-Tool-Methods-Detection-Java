@@ -6,6 +6,7 @@ import com.finalproject.automated.refactoring.tool.methods.detection.java.servic
 import com.finalproject.automated.refactoring.tool.methods.detection.java.service.StartIndexAnalysis;
 import com.finalproject.automated.refactoring.tool.methods.detection.model.IndexModel;
 import com.finalproject.automated.refactoring.tool.methods.detection.service.MethodAnalysis;
+import com.finalproject.automated.refactoring.tool.methods.detection.service.util.MethodsDetectionUtil;
 import com.finalproject.automated.refactoring.tool.model.MethodModel;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Async;
@@ -34,6 +35,9 @@ public class JavaMethodAnalysis implements MethodAnalysis {
     @Autowired
     private MethodBodyAnalysis methodBodyAnalysis;
 
+    @Autowired
+    private MethodsDetectionUtil methodsDetectionUtil;
+
     @Async
     @Override
     public Future analysis(FileModel fileModel, IndexModel indexModel, Map<String, List<MethodModel>> result) {
@@ -54,7 +58,7 @@ public class JavaMethodAnalysis implements MethodAnalysis {
 
     private void saveResult(FileModel fileModel, MethodModel methodModel,
                             Map<String, List<MethodModel>> result) {
-        String key = fileModel.getPath() + "//" + fileModel.getFilename();
+        String key = methodsDetectionUtil.getMethodKey(fileModel);
 
         if (result.containsKey(key))
             result.get(key).add(methodModel);

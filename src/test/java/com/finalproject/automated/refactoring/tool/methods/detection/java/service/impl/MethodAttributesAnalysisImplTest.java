@@ -27,6 +27,8 @@ public class MethodAttributesAnalysisImplTest {
 
     private IndexModel nonConstructorIndexModel;
 
+    private IndexModel invalidIndexModel;
+
     @Before
     public void setUp() {
         methodAttributesAnalysis = new MethodAttributesAnalysisImpl();
@@ -38,6 +40,10 @@ public class MethodAttributesAnalysisImplTest {
         nonConstructorIndexModel = IndexModel.builder()
                 .start(486)
                 .end(535)
+                .build();
+        invalidIndexModel = IndexModel.builder()
+                .start(567)
+                .end(657)
                 .build();
     }
 
@@ -59,6 +65,12 @@ public class MethodAttributesAnalysisImplTest {
         methodAttributesAnalysis.analysis(fileModel, nonConstructorIndexModel, methodModel);
 
         assertEquals(expectedMethodModel, methodModel);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void analysis_failed_unstructuredMethodName() {
+        MethodModel methodModel = MethodModel.builder().build();
+        methodAttributesAnalysis.analysis(fileModel, invalidIndexModel, methodModel);
     }
 
     @Test(expected = NullPointerException.class)
@@ -120,7 +132,11 @@ public class MethodAttributesAnalysisImplTest {
                 "        this.name = name;\n" +
                 "    }\n" +
                 "\n" +
-                "    public String getExtension() {\n" +
+                "    @Bean\n" +
+                "    (\n"+
+                "        name = \"FileExtension\"\n"+
+                "    )\n"+
+                "    public String @getExtension() {\n" +
                 "        return extension;\n" +
                 "    }\n" +
                 "\n" +

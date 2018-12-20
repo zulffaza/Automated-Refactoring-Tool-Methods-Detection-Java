@@ -41,6 +41,7 @@ public class MethodAttributesAnalysisImpl implements MethodAttributesAnalysis {
 
     private static final Integer FIRST_INDEX = 0;
     private static final Integer SECOND_INDEX = 1;
+    private static final Integer NORMAL_SIZE = 2;
     private static final Integer ONE_RESERVED_WORDS = 1;
     private static final Integer TWO_RESERVED_WORDS = 2;
 
@@ -63,29 +64,42 @@ public class MethodAttributesAnalysisImpl implements MethodAttributesAnalysis {
     }
 
     private void normalizeAttributes(List<String> words, String joinDelimiter) {
+        if (!isNormal(words))
+            doNormalizeAttributes(words, joinDelimiter);
+    }
+
+    private void doNormalizeAttributes(List<String> words, String joinDelimiter) {
+        Integer splitIndex = searchSplitIndex(words);
+        splitIndex = normalizeIndex(words, splitIndex);
+
+        joinList(words, joinDelimiter, splitIndex);
+    }
+
+    private Boolean isNormal(List<String> words) {
+        return words.size() == NORMAL_SIZE;
+    }
+
+    private Integer searchSplitIndex(List<String> words) {
         Integer index;
 
         for (index = FIRST_INDEX; index < words.size(); index++) {
             String firstChar = words.get(index).substring(FIRST_INDEX, SECOND_INDEX);
 
-            if (isSplittedIndexFound(firstChar, index))
+            if (isSplitIndexFound(firstChar, index))
                 break;
         }
 
-        joinList(words, joinDelimiter, checkIfLastIndex(words, index));
+        return index;
     }
 
-    private Boolean isSplittedIndexFound(String firstChar, Integer index) {
+    private Boolean isSplitIndexFound(String firstChar, Integer index) {
         Boolean isAt = firstChar.equals(AT);
         Boolean isFirst = index.equals(FIRST_INDEX);
 
         return ((isFirst && !isAt) || (!isFirst && isAt));
     }
 
-    private Integer checkIfLastIndex(List<String> words, Integer index) {
-        if (index.equals(FIRST_INDEX))
-            return ++index;
-
+    private Integer normalizeIndex(List<String> words, Integer index) {
         if (index.equals(words.size()))
             return --index;
 

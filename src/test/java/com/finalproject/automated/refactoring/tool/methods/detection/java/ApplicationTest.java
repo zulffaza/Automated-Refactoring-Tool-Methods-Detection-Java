@@ -82,7 +82,7 @@ public class ApplicationTest {
 
     @Test
     public void methodsDetection_multiFile_success() {
-        String key = fileModels.get(FIRST_INDEX).getPath() + "//" + fileModels.get(FIRST_INDEX).getFilename();
+        String key = fileModels.get(FIRST_INDEX).getPath() + "/" + fileModels.get(FIRST_INDEX).getFilename();
         Map<String, List<MethodModel>> result = methodsDetection.detect(fileModels);
 
         assertEquals(ONE.intValue(), result.size());
