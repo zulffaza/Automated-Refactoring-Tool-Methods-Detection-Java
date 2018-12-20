@@ -8,6 +8,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.junit4.SpringRunner;
 
 import java.util.ArrayList;
@@ -15,10 +16,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 /**
  * @author fazazulfikapp
@@ -28,6 +26,7 @@ import static org.junit.Assert.assertTrue;
 
 @RunWith(SpringRunner.class)
 @SpringBootTest
+@ActiveProfiles("async")
 public class ApplicationTest {
 
     @Autowired
@@ -83,13 +82,13 @@ public class ApplicationTest {
 
     @Test
     public void methodsDetection_multiFile_success() {
-        String filename = fileModels.get(FIRST_INDEX).getFilename();
+        String key = fileModels.get(FIRST_INDEX).getPath() + "/" + fileModels.get(FIRST_INDEX).getFilename();
         Map<String, List<MethodModel>> result = methodsDetection.detect(fileModels);
 
         assertEquals(ONE.intValue(), result.size());
-        assertTrue(result.containsKey(filename));
+        assertTrue(result.containsKey(key));
 
-        List<MethodModel> methodModels = result.get(filename);
+        List<MethodModel> methodModels = result.get(key);
         assertMethodModels(methodModels);
     }
 
