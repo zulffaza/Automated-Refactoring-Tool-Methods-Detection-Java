@@ -11,6 +11,8 @@ import com.finalproject.automated.refactoring.tool.model.PropertyModel;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.invocation.InvocationOnMock;
+import org.mockito.stubbing.Answer;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
@@ -24,12 +26,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 /**
  * @author fazazulfikapp
@@ -63,6 +66,7 @@ public class JavaMethodAnalysisTest {
     private static final Integer ZERO = 0;
     private static final Integer ONE = 1;
     private static final Integer TWO = 2;
+    private static final Integer INVOKED_ONCE = 1;
 
     private static final String METHOD_KEYWORD_ONE = "@SuppressWarnings()";
     private static final String METHOD_KEYWORD_TWO = "public";
@@ -94,65 +98,30 @@ public class JavaMethodAnalysisTest {
                 .build();
         key = fileModel.getPath() + "//" + fileModel.getFilename();
 
-        doAnswer(invocationOnMock -> {
-            ((IndexModel) invocationOnMock.getArgument(SECOND_INDEX)).setStart(234);
-            return null;
-        }).when(startIndexAnalysis).analysis(eq(fileModel.getContent()), eq(indexModel));
+        doAnswer(this::stubStartIndexAnalysisIndexModel)
+                .when(startIndexAnalysis).analysis(eq(fileModel.getContent()), eq(indexModel));
 
-        doAnswer(invocationOnMock -> {
-            ((IndexModel) invocationOnMock.getArgument(SECOND_INDEX)).setStart(486);
-            return null;
-        }).when(startIndexAnalysis).analysis(eq(fileModel.getContent()), eq(nonConstructorIndexModel));
+        doAnswer(this::stubStartIndexAnalysisNonConstructorIndexModel)
+                .when(startIndexAnalysis).analysis(eq(fileModel.getContent()), eq(nonConstructorIndexModel));
 
         doThrow(NullPointerException.class)
                 .when(startIndexAnalysis).analysis(eq(fileModel.getContent()), eq(null));
 
-        doAnswer(invocationOnMock -> {
-            MethodModel methodModel = invocationOnMock.getArgument(THIRD_INDEX);
-            methodModel.setKeywords(Arrays.asList("@SuppressWarnings()", "public"));
-            methodModel.setName("Filename");
-            methodModel.setParameters(Arrays.asList(
-                    PropertyModel.builder()
-                            .keywords(Arrays.asList("@NonNull"))
-                            .type("String")
-                            .name("name")
-                            .build(),
-                    PropertyModel.builder()
-                            .keywords(Arrays.asList("@NonNull"))
-                            .type("String")
-                            .name("extension")
-                            .build()
-            ));
-            methodModel.setExceptions(Arrays.asList("Exception", "IOException"));
-            return null;
-        }).when(methodAttributesAnalysis).analysis(eq(fileModel), eq(indexModel), eq(MethodModel.builder().build()));
+        doAnswer(this::stubMethodAttributesAnalysisIndexModel)
+                .when(methodAttributesAnalysis)
+                .analysis(eq(fileModel), eq(indexModel), eq(MethodModel.builder().build()));
 
-        doAnswer(invocationOnMock -> {
-            MethodModel methodModel = invocationOnMock.getArgument(THIRD_INDEX);
-            methodModel.setKeywords(Arrays.asList("public"));
-            methodModel.setReturnType("void");
-            methodModel.setName("setName");
-            methodModel.setParameters(Arrays.asList(
-                    PropertyModel.builder()
-                            .keywords(Arrays.asList("@NonNull"))
-                            .type("String")
-                            .name("name")
-                            .build()
-            ));
-            return null;
-        }).when(methodAttributesAnalysis).analysis(eq(fileModel), eq(nonConstructorIndexModel), eq(MethodModel.builder().build()));
-        doAnswer(invocationOnMock -> {
-            MethodModel methodModel = invocationOnMock.getArgument(THIRD_INDEX);
-            methodModel.setBody("this.name = name;\n" +
-                    "        this.extension = extension;");
-            return null;
-        }).when(methodBodyAnalysis).analysis(eq(fileModel.getContent()), eq(indexModel), any(MethodModel.class));
+        doAnswer(this::stubMethodAttributesAnalysisNonConstructorIndexModel)
+                .when(methodAttributesAnalysis)
+                .analysis(eq(fileModel), eq(nonConstructorIndexModel), eq(MethodModel.builder().build()));
 
-        doAnswer(invocationOnMock -> {
-            MethodModel methodModel = invocationOnMock.getArgument(THIRD_INDEX);
-            methodModel.setBody("this.name = name;");
-            return null;
-        }).when(methodBodyAnalysis).analysis(eq(fileModel.getContent()), eq(nonConstructorIndexModel), any(MethodModel.class));
+        doAnswer(this::stubMethodBodyAnalysisIndexModel)
+                .when(methodBodyAnalysis)
+                .analysis(eq(fileModel.getContent()), eq(indexModel), any(MethodModel.class));
+
+        doAnswer(this::stubMethodBodyAnalysisNonConstructorIndexModel)
+                .when(methodBodyAnalysis)
+                .analysis(eq(fileModel.getContent()), eq(nonConstructorIndexModel), any(MethodModel.class));
 
         when(methodsDetectionUtil.getMethodKey(fileModel))
                 .thenReturn(key);
@@ -172,6 +141,11 @@ public class JavaMethodAnalysisTest {
         analysisSuccessCheckResultParameters(result);
         analysisSuccessCheckResultExceptions(result);
         analysisSuccessCheckResultAnother(result);
+
+        verifyStartIndexAnalysisIndexModel();
+        verifyMethodAttributesAnalysisIndexModel();
+        verifyMethodBodyAnalysisIndexModel();
+        verifyMethodsDetectionUtil();
     }
 
     @Test
@@ -191,6 +165,11 @@ public class JavaMethodAnalysisTest {
         analysisSuccessResultIsNotEmptyCheckResultParameters(result);
         analysisSuccessResultIsNotEmptyCheckResultExceptions(result);
         analysisSuccessResultIsNotEmptyCheckResultAnother(result);
+
+        verifyStartIndexAnalysisIndexModel();
+        verifyMethodAttributesAnalysisIndexModel();
+        verifyMethodBodyAnalysisIndexModel();
+        verifyMethodsDetectionUtil();
     }
 
     @Test
@@ -208,6 +187,11 @@ public class JavaMethodAnalysisTest {
         analysisSuccessNonConstructorMethodsCheckResultParameters(result);
         analysisSuccessNonConstructorMethodsCheckResultExceptions(result);
         analysisSuccessNonConstructorMethodsCheckResultAnother(result);
+
+        verifyStartIndexAnalysisNonConstructorIndexModel();
+        verifyMethodAttributesAnalysisNonConstructorIndexModel();
+        verifyMethodBodyAnalysisNonConstructorIndexModel();
+        verifyMethodsDetectionUtil();
     }
 
     @Test
@@ -224,6 +208,8 @@ public class JavaMethodAnalysisTest {
         methodAnalysis.analysis(fileModel, null, result);
 
         assertEquals(ZERO.intValue(), result.size());
+
+        verifyStartIndexAnalysisIndexModelIsNull();
     }
 
     private static FileModel getFileModel() {
@@ -271,6 +257,64 @@ public class JavaMethodAnalysisTest {
                 "        this.extension = extension;\n" +
                 "    }\n" +
                 "}";
+    }
+
+    private Answer stubStartIndexAnalysisIndexModel(InvocationOnMock invocationOnMock) {
+        ((IndexModel) invocationOnMock.getArgument(SECOND_INDEX)).setStart(234);
+        return null;
+    }
+
+    private Answer stubStartIndexAnalysisNonConstructorIndexModel(InvocationOnMock invocationOnMock) {
+        ((IndexModel) invocationOnMock.getArgument(SECOND_INDEX)).setStart(486);
+        return null;
+    }
+
+    private Answer stubMethodAttributesAnalysisIndexModel(InvocationOnMock invocationOnMock) {
+        MethodModel methodModel = invocationOnMock.getArgument(THIRD_INDEX);
+        methodModel.setKeywords(Arrays.asList("@SuppressWarnings()", "public"));
+        methodModel.setName("Filename");
+        methodModel.setParameters(Arrays.asList(
+                PropertyModel.builder()
+                        .keywords(Collections.singletonList("@NonNull"))
+                        .type("String")
+                        .name("name")
+                        .build(),
+                PropertyModel.builder()
+                        .keywords(Collections.singletonList("@NonNull"))
+                        .type("String")
+                        .name("extension")
+                        .build()
+        ));
+        methodModel.setExceptions(Arrays.asList("Exception", "IOException"));
+        return null;
+    }
+
+    private Answer stubMethodAttributesAnalysisNonConstructorIndexModel(InvocationOnMock invocationOnMock) {
+        MethodModel methodModel = invocationOnMock.getArgument(THIRD_INDEX);
+        methodModel.setKeywords(Collections.singletonList("public"));
+        methodModel.setReturnType("void");
+        methodModel.setName("setName");
+        methodModel.setParameters(Collections.singletonList(
+                PropertyModel.builder()
+                        .keywords(Collections.singletonList("@NonNull"))
+                        .type("String")
+                        .name("name")
+                        .build()
+        ));
+        return null;
+    }
+
+    private Answer stubMethodBodyAnalysisIndexModel(InvocationOnMock invocationOnMock) {
+        MethodModel methodModel = invocationOnMock.getArgument(THIRD_INDEX);
+        methodModel.setBody("this.name = name;\n" +
+                "        this.extension = extension;");
+        return null;
+    }
+
+    private Answer stubMethodBodyAnalysisNonConstructorIndexModel(InvocationOnMock invocationOnMock) {
+        MethodModel methodModel = invocationOnMock.getArgument(THIRD_INDEX);
+        methodModel.setBody("this.name = name;");
+        return null;
     }
 
     private void analysisSuccessCheckResult(Map<String, List<MethodModel>> result) {
@@ -424,5 +468,53 @@ public class JavaMethodAnalysisTest {
     private void analysisSuccessNonConstructorMethodsCheckResultAnother(Map<String, List<MethodModel>> result) {
         assertNotNull(result.get(key).get(FIRST_INDEX).getBody());
         assertNull(result.get(key).get(FIRST_INDEX).getLoc());
+    }
+
+    private void verifyStartIndexAnalysisIndexModel() {
+        verify(startIndexAnalysis, times(INVOKED_ONCE))
+                .analysis(eq(fileModel.getContent()), eq(indexModel));
+        verifyNoMoreInteractions(startIndexAnalysis);
+    }
+
+    private void verifyStartIndexAnalysisNonConstructorIndexModel() {
+        verify(startIndexAnalysis, times(INVOKED_ONCE))
+                .analysis(eq(fileModel.getContent()), eq(nonConstructorIndexModel));
+        verifyNoMoreInteractions(startIndexAnalysis);
+    }
+
+    private void verifyStartIndexAnalysisIndexModelIsNull() {
+        verify(startIndexAnalysis, times(INVOKED_ONCE))
+                .analysis(eq(fileModel.getContent()), eq(null));
+        verifyNoMoreInteractions(startIndexAnalysis);
+    }
+
+    private void verifyMethodAttributesAnalysisIndexModel() {
+        verify(methodAttributesAnalysis, times(INVOKED_ONCE))
+                .analysis(eq(fileModel), eq(indexModel), any(MethodModel.class));
+        verifyNoMoreInteractions(methodAttributesAnalysis);
+    }
+
+    private void verifyMethodAttributesAnalysisNonConstructorIndexModel() {
+        verify(methodAttributesAnalysis, times(INVOKED_ONCE))
+                .analysis(eq(fileModel), eq(nonConstructorIndexModel), any(MethodModel.class));
+        verifyNoMoreInteractions(methodAttributesAnalysis);
+    }
+
+    private void verifyMethodBodyAnalysisIndexModel() {
+        verify(methodBodyAnalysis, times(INVOKED_ONCE))
+                .analysis(eq(fileModel.getContent()), eq(indexModel), any(MethodModel.class));
+        verifyNoMoreInteractions(methodBodyAnalysis);
+    }
+
+    private void verifyMethodBodyAnalysisNonConstructorIndexModel() {
+        verify(methodBodyAnalysis, times(INVOKED_ONCE))
+                .analysis(eq(fileModel.getContent()), eq(nonConstructorIndexModel), any(MethodModel.class));
+        verifyNoMoreInteractions(methodBodyAnalysis);
+    }
+
+    private void verifyMethodsDetectionUtil() {
+        verify(methodsDetectionUtil, times(INVOKED_ONCE))
+                .getMethodKey(fileModel);
+        verifyNoMoreInteractions(methodsDetectionUtil);
     }
 }
