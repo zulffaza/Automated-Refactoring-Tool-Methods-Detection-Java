@@ -11,6 +11,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.junit4.SpringRunner;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -82,7 +83,7 @@ public class ApplicationTest {
 
     @Test
     public void methodsDetection_multiFile_success() {
-        String key = fileModels.get(FIRST_INDEX).getPath() + "/" + fileModels.get(FIRST_INDEX).getFilename();
+        String key = fileModels.get(FIRST_INDEX).getPath() + File.separator + fileModels.get(FIRST_INDEX).getFilename();
         Map<String, List<MethodModel>> result = methodsDetection.detect(fileModels);
 
         assertEquals(ONE.intValue(), result.size());

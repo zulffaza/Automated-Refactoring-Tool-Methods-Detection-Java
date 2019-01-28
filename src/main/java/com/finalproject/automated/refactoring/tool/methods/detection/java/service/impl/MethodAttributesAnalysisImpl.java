@@ -209,14 +209,16 @@ public class MethodAttributesAnalysisImpl implements MethodAttributesAnalysis {
     }
 
     private void mergeKeywords(List<String> words, List<Integer> mergeIndex, String delimiter) {
-        for (Integer index = FIRST_INDEX; index < mergeIndex.size(); index++) {
+        Integer maxSize = mergeIndex.size() - SECOND_INDEX;
+
+        for (Integer index = FIRST_INDEX; index < maxSize; index++) {
             Integer startPoint = mergeIndex.get(index);
             Integer endPoint = mergeIndex.get(++index);
 
             words.set(startPoint, String.join(delimiter, words.subList(startPoint, ++endPoint)));
         }
 
-        for (Integer index = (mergeIndex.size() - SECOND_INDEX); index >= FIRST_INDEX; index--) {
+        for (Integer index = maxSize; index > FIRST_INDEX; index--) {
             Integer endPoint = mergeIndex.get(index);
             Integer startPoint = mergeIndex.get(--index) + SECOND_INDEX;
 
@@ -225,6 +227,7 @@ public class MethodAttributesAnalysisImpl implements MethodAttributesAnalysis {
             }
         }
     }
+
 
     private Integer getNumOfReservedWords(Boolean isConstructor) {
         if (isConstructor)
