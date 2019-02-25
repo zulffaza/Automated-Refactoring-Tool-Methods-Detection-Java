@@ -19,6 +19,7 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.junit4.SpringRunner;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -42,7 +43,6 @@ import static org.mockito.Mockito.*;
 
 @RunWith(SpringRunner.class)
 @SpringBootTest
-@ActiveProfiles("non-async")
 public class JavaMethodAnalysisTest {
 
     @Autowired
@@ -96,7 +96,7 @@ public class JavaMethodAnalysisTest {
                 .start(503)
                 .end(535)
                 .build();
-        key = fileModel.getPath() + "//" + fileModel.getFilename();
+        key = fileModel.getPath() + File.separator + fileModel.getFilename();
 
         doAnswer(this::stubStartIndexAnalysisIndexModel)
                 .when(startIndexAnalysis).analysis(eq(fileModel.getContent()), eq(indexModel));
