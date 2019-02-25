@@ -131,7 +131,7 @@ public class JavaMethodAnalysisTest {
     public void analysis_success() {
         String methodName = "Filename";
 
-        Map<String, List<MethodModel>> result = Collections.synchronizedMap(new HashMap<>());
+        Map<String, List<MethodModel>> result = createEmptyMethodModels();
         methodAnalysis.analysis(fileModel, indexModel, result);
 
         analysisSuccessCheckResult(result);
@@ -152,8 +152,7 @@ public class JavaMethodAnalysisTest {
     public void analysis_success_resultIsNotEmpty() {
         String methodName = "Filename";
 
-        Map<String, List<MethodModel>> result = Collections.synchronizedMap(new HashMap<>());
-        result.put(key, new ArrayList<>());
+        Map<String, List<MethodModel>> result = createEmptyMethodModels();
         result.get(key).add(MethodModel.builder().build());
 
         methodAnalysis.analysis(fileModel, indexModel, result);
@@ -177,7 +176,7 @@ public class JavaMethodAnalysisTest {
         String methodName = "setName";
         String returnType = "void";
 
-        Map<String, List<MethodModel>> result = Collections.synchronizedMap(new HashMap<>());
+        Map<String, List<MethodModel>> result = createEmptyMethodModels();
         methodAnalysis.analysis(fileModel, nonConstructorIndexModel, result);
 
         analysisSuccessNonConstructorMethodsCheckResult(result);
@@ -257,6 +256,13 @@ public class JavaMethodAnalysisTest {
                 "        this.extension = extension;\n" +
                 "    }\n" +
                 "}";
+    }
+
+    private Map<String, List<MethodModel>> createEmptyMethodModels() {
+        Map<String, List<MethodModel>> result = Collections.synchronizedMap(new HashMap<>());
+        result.put(key, new ArrayList<>());
+
+        return result;
     }
 
     private Answer stubStartIndexAnalysisIndexModel(InvocationOnMock invocationOnMock) {
