@@ -8,7 +8,6 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.junit4.SpringRunner;
 
 import java.io.File;
@@ -27,7 +26,6 @@ import static org.junit.Assert.*;
 
 @RunWith(SpringRunner.class)
 @SpringBootTest
-@ActiveProfiles("async")
 public class ApplicationTest {
 
     @Autowired
@@ -69,10 +67,9 @@ public class ApplicationTest {
         assertMethodModels(methodModels);
     }
 
-    @Test
+    @Test(expected = NullPointerException.class)
     public void methodsDetection_singleFile_fileModelIsEmpty() {
-        List<MethodModel> methodModels = methodsDetection.detect(FileModel.builder().build());
-        assertNull(methodModels);
+        methodsDetection.detect(FileModel.builder().build());
     }
 
     @Test(expected = NullPointerException.class)
@@ -93,11 +90,9 @@ public class ApplicationTest {
         assertMethodModels(methodModels);
     }
 
-    @Test
+    @Test(expected = NullPointerException.class)
     public void methodsDetection_multiFile_fileModelIsEmpty() {
-        Map<String, List<MethodModel>> result = methodsDetection.detect(
-                Collections.singletonList(FileModel.builder().build()));
-        assertEquals(ZERO.intValue(), result.size());
+        methodsDetection.detect(Collections.singletonList(FileModel.builder().build()));
     }
 
     @Test

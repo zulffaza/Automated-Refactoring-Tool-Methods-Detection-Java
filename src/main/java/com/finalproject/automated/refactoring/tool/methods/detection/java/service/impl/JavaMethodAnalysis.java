@@ -9,13 +9,10 @@ import com.finalproject.automated.refactoring.tool.methods.detection.service.Met
 import com.finalproject.automated.refactoring.tool.methods.detection.service.util.MethodsDetectionUtil;
 import com.finalproject.automated.refactoring.tool.model.MethodModel;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.Future;
 
 /**
  * @author fazazulfikapp
@@ -38,9 +35,8 @@ public class JavaMethodAnalysis implements MethodAnalysis {
     @Autowired
     private MethodsDetectionUtil methodsDetectionUtil;
 
-    @Async
     @Override
-    public Future analysis(FileModel fileModel, IndexModel indexModel, Map<String, List<MethodModel>> result) {
+    public void analysis(FileModel fileModel, IndexModel indexModel, Map<String, List<MethodModel>> result) {
         MethodModel methodModel = MethodModel.builder().build();
 
         try {
@@ -52,21 +48,11 @@ public class JavaMethodAnalysis implements MethodAnalysis {
             // Do nothing
             // Mark of non-method analysis
         }
-
-        return null;
     }
 
     private void saveResult(FileModel fileModel, MethodModel methodModel,
                             Map<String, List<MethodModel>> result) {
         String key = methodsDetectionUtil.getMethodKey(fileModel);
-
-        if (result.containsKey(key))
-            result.get(key).add(methodModel);
-        else {
-            List<MethodModel> methodModels = new ArrayList<>();
-            methodModels.add(methodModel);
-
-            result.put(key, methodModels);
-        }
+        result.get(key).add(methodModel);
     }
 }
