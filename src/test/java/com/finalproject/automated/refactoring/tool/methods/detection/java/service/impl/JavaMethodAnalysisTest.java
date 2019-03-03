@@ -16,7 +16,6 @@ import org.mockito.stubbing.Answer;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.junit4.SpringRunner;
 
 import java.io.File;
@@ -27,10 +26,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
@@ -131,7 +127,7 @@ public class JavaMethodAnalysisTest {
     public void analysis_success() {
         String methodName = "Filename";
 
-        Map<String, List<MethodModel>> result = createEmptyMethodModels();
+        Map<String, List<MethodModel>> result = new HashMap<>();
         methodAnalysis.analysis(fileModel, indexModel, result);
 
         analysisSuccessCheckResult(result);
@@ -152,7 +148,8 @@ public class JavaMethodAnalysisTest {
     public void analysis_success_resultIsNotEmpty() {
         String methodName = "Filename";
 
-        Map<String, List<MethodModel>> result = createEmptyMethodModels();
+        Map<String, List<MethodModel>> result = new HashMap<>();
+        result.put(key, new ArrayList<>());
         result.get(key).add(MethodModel.builder().build());
 
         methodAnalysis.analysis(fileModel, indexModel, result);
@@ -176,7 +173,7 @@ public class JavaMethodAnalysisTest {
         String methodName = "setName";
         String returnType = "void";
 
-        Map<String, List<MethodModel>> result = createEmptyMethodModels();
+        Map<String, List<MethodModel>> result = new HashMap<>();
         methodAnalysis.analysis(fileModel, nonConstructorIndexModel, result);
 
         analysisSuccessNonConstructorMethodsCheckResult(result);
@@ -195,7 +192,7 @@ public class JavaMethodAnalysisTest {
 
     @Test
     public void analysis_failed_fileModelIsNull() {
-        Map<String, List<MethodModel>> result = Collections.synchronizedMap(new HashMap<>());
+        Map<String, List<MethodModel>> result = new HashMap<>();
         methodAnalysis.analysis(null, indexModel, result);
 
         assertEquals(ZERO.intValue(), result.size());
@@ -203,7 +200,7 @@ public class JavaMethodAnalysisTest {
 
     @Test
     public void analysis_failed_indexModelIsNull() {
-        Map<String, List<MethodModel>> result = Collections.synchronizedMap(new HashMap<>());
+        Map<String, List<MethodModel>> result = new HashMap<>();
         methodAnalysis.analysis(fileModel, null, result);
 
         assertEquals(ZERO.intValue(), result.size());
@@ -256,13 +253,6 @@ public class JavaMethodAnalysisTest {
                 "        this.extension = extension;\n" +
                 "    }\n" +
                 "}";
-    }
-
-    private Map<String, List<MethodModel>> createEmptyMethodModels() {
-        Map<String, List<MethodModel>> result = Collections.synchronizedMap(new HashMap<>());
-        result.put(key, new ArrayList<>());
-
-        return result;
     }
 
     private Answer stubStartIndexAnalysisIndexModel(InvocationOnMock invocationOnMock) {
