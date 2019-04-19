@@ -3,11 +3,13 @@ package com.finalproject.automated.refactoring.tool.methods.detection.java.servi
 import com.finalproject.automated.refactoring.tool.files.detection.model.FileModel;
 import com.finalproject.automated.refactoring.tool.methods.detection.java.service.MethodAttributesAnalysis;
 import com.finalproject.automated.refactoring.tool.methods.detection.java.service.MethodBodyAnalysis;
+import com.finalproject.automated.refactoring.tool.methods.detection.java.service.MethodStatementAnalysis;
 import com.finalproject.automated.refactoring.tool.methods.detection.java.service.StartIndexAnalysis;
 import com.finalproject.automated.refactoring.tool.methods.detection.model.IndexModel;
 import com.finalproject.automated.refactoring.tool.methods.detection.service.util.MethodsDetectionUtil;
 import com.finalproject.automated.refactoring.tool.model.MethodModel;
 import com.finalproject.automated.refactoring.tool.model.PropertyModel;
+import com.finalproject.automated.refactoring.tool.model.StatementModel;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -54,6 +56,9 @@ public class JavaMethodAnalysisTest {
     private MethodBodyAnalysis methodBodyAnalysis;
 
     @MockBean
+    private MethodStatementAnalysis methodStatementAnalysis;
+
+    @MockBean
     private MethodsDetectionUtil methodsDetectionUtil;
 
     private static final Integer FIRST_INDEX = 0;
@@ -72,6 +77,7 @@ public class JavaMethodAnalysisTest {
     private static final String METHOD_PARAMETER_NAME_TWO = "extension";
     private static final String METHOD_EXCEPTION_ONE = "Exception";
     private static final String METHOD_EXCEPTION_TWO = "IOException";
+    private static final String METHOD_STATEMENT = "this.name = name;";
 
     private FileModel fileModel;
 
@@ -119,6 +125,10 @@ public class JavaMethodAnalysisTest {
                 .when(methodBodyAnalysis)
                 .analysis(eq(fileModel.getContent()), eq(nonConstructorIndexModel), any(MethodModel.class));
 
+        doAnswer(this::stubMethodStatementAnalysisIndexModel)
+                .when(methodStatementAnalysis)
+                .analysis(any(MethodModel.class));
+
         when(methodsDetectionUtil.getMethodKey(fileModel))
                 .thenReturn(key);
     }
@@ -136,11 +146,13 @@ public class JavaMethodAnalysisTest {
         analysisSuccessCheckResultName(methodName, result);
         analysisSuccessCheckResultParameters(result);
         analysisSuccessCheckResultExceptions(result);
+        analysisSuccessCheckResultStatement(result);
         analysisSuccessCheckResultAnother(result);
 
         verifyStartIndexAnalysisIndexModel();
         verifyMethodAttributesAnalysisIndexModel();
         verifyMethodBodyAnalysisIndexModel();
+        verifyMethodStatementAnalysis();
         verifyMethodsDetectionUtil();
     }
 
@@ -160,11 +172,13 @@ public class JavaMethodAnalysisTest {
         analysisSuccessResultIsNotEmptyCheckResultName(methodName, result);
         analysisSuccessResultIsNotEmptyCheckResultParameters(result);
         analysisSuccessResultIsNotEmptyCheckResultExceptions(result);
+        analysisSuccessResultIsNotEmptyCheckResultStatement(result);
         analysisSuccessResultIsNotEmptyCheckResultAnother(result);
 
         verifyStartIndexAnalysisIndexModel();
         verifyMethodAttributesAnalysisIndexModel();
         verifyMethodBodyAnalysisIndexModel();
+        verifyMethodStatementAnalysis();
         verifyMethodsDetectionUtil();
     }
 
@@ -182,11 +196,13 @@ public class JavaMethodAnalysisTest {
         analysisSuccessNonConstructorMethodsCheckResultName(methodName, result);
         analysisSuccessNonConstructorMethodsCheckResultParameters(result);
         analysisSuccessNonConstructorMethodsCheckResultExceptions(result);
+        analysisSuccessNonConstructorMethodsCheckResultStatement(result);
         analysisSuccessNonConstructorMethodsCheckResultAnother(result);
 
         verifyStartIndexAnalysisNonConstructorIndexModel();
         verifyMethodAttributesAnalysisNonConstructorIndexModel();
         verifyMethodBodyAnalysisNonConstructorIndexModel();
+        verifyMethodStatementAnalysis();
         verifyMethodsDetectionUtil();
     }
 
@@ -313,6 +329,17 @@ public class JavaMethodAnalysisTest {
         return null;
     }
 
+    private Answer stubMethodStatementAnalysisIndexModel(InvocationOnMock invocationOnMock) {
+        MethodModel methodModel = invocationOnMock.getArgument(FIRST_INDEX);
+        StatementModel statement = StatementModel.statementBuilder()
+                .statement(METHOD_STATEMENT)
+                .build();
+
+        methodModel.getStatements()
+                .add(statement);
+        return null;
+    }
+
     private void analysisSuccessCheckResult(Map<String, List<MethodModel>> result) {
         assertEquals(ONE.intValue(), result.size());
         assertTrue(result.containsKey(key));
@@ -361,6 +388,12 @@ public class JavaMethodAnalysisTest {
                 .getExceptions().get(FIRST_INDEX));
         assertEquals(METHOD_EXCEPTION_TWO, result.get(key).get(FIRST_INDEX)
                 .getExceptions().get(SECOND_INDEX));
+    }
+
+    private void analysisSuccessCheckResultStatement(Map<String, List<MethodModel>> result) {
+        assertEquals(ONE.intValue(), result.get(key).get(FIRST_INDEX).getStatements().size());
+        assertEquals(METHOD_STATEMENT, result.get(key).get(FIRST_INDEX)
+                .getStatements().get(FIRST_INDEX).getStatement());
     }
 
     private void analysisSuccessCheckResultAnother(Map<String, List<MethodModel>> result) {
@@ -418,6 +451,12 @@ public class JavaMethodAnalysisTest {
                 .getExceptions().get(SECOND_INDEX));
     }
 
+    private void analysisSuccessResultIsNotEmptyCheckResultStatement(Map<String, List<MethodModel>> result) {
+        assertEquals(ONE.intValue(), result.get(key).get(SECOND_INDEX).getStatements().size());
+        assertEquals(METHOD_STATEMENT, result.get(key).get(SECOND_INDEX)
+                .getStatements().get(FIRST_INDEX).getStatement());
+    }
+
     private void analysisSuccessResultIsNotEmptyCheckResultAnother(Map<String, List<MethodModel>> result) {
         assertNotNull(result.get(key).get(SECOND_INDEX).getBody());
         assertNull(result.get(key).get(SECOND_INDEX).getLoc());
@@ -459,6 +498,12 @@ public class JavaMethodAnalysisTest {
 
     private void analysisSuccessNonConstructorMethodsCheckResultExceptions(Map<String, List<MethodModel>> result) {
         assertEquals(ZERO.intValue(), result.get(key).get(FIRST_INDEX).getExceptions().size());
+    }
+
+    private void analysisSuccessNonConstructorMethodsCheckResultStatement(Map<String, List<MethodModel>> result) {
+        assertEquals(ONE.intValue(), result.get(key).get(FIRST_INDEX).getStatements().size());
+        assertEquals(METHOD_STATEMENT, result.get(key).get(FIRST_INDEX)
+                .getStatements().get(FIRST_INDEX).getStatement());
     }
 
     private void analysisSuccessNonConstructorMethodsCheckResultAnother(Map<String, List<MethodModel>> result) {
@@ -506,6 +551,12 @@ public class JavaMethodAnalysisTest {
         verify(methodBodyAnalysis, times(INVOKED_ONCE))
                 .analysis(eq(fileModel.getContent()), eq(nonConstructorIndexModel), any(MethodModel.class));
         verifyNoMoreInteractions(methodBodyAnalysis);
+    }
+
+    private void verifyMethodStatementAnalysis() {
+        verify(methodStatementAnalysis, times(INVOKED_ONCE))
+                .analysis(any(MethodModel.class));
+        verifyNoMoreInteractions(methodStatementAnalysis);
     }
 
     private void verifyMethodsDetectionUtil() {
