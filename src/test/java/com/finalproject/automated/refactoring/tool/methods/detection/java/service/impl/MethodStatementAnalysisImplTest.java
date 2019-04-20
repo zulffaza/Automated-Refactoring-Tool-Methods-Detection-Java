@@ -77,7 +77,7 @@ public class MethodStatementAnalysisImplTest {
         statements.add(createFirstStatement());
         statements.add(createSecondStatement());
         statements.add(createThirdStatement());
-        statements.add(createSecondStatement());
+        statements.add(createFourthStatement());
 
         return statements;
     }
@@ -86,6 +86,8 @@ public class MethodStatementAnalysisImplTest {
         BlockModel blockModel = BlockModel.blockBuilder()
                 .build();
         blockModel.setStatement("try {");
+        blockModel.setStartIndex(0);
+        blockModel.setEndIndex(4);
         blockModel.getStatements()
                 .add(createFirstBlockStatement());
 
@@ -95,12 +97,16 @@ public class MethodStatementAnalysisImplTest {
     private StatementModel createFirstBlockStatement() {
         return StatementModel.statementBuilder()
                 .statement("return user + \"-\" + name + extension;")
+                .startIndex(18)
+                .endIndex(54)
                 .build();
     }
 
     private StatementModel createSecondStatement() {
         return StatementModel.statementBuilder()
                 .statement("}")
+                .startIndex(64)
+                .endIndex(64)
                 .build();
     }
 
@@ -108,6 +114,8 @@ public class MethodStatementAnalysisImplTest {
         BlockModel blockModel = BlockModel.blockBuilder()
                 .build();
         blockModel.setStatement("catch (NullPointerException e) {");
+        blockModel.setStartIndex(66);
+        blockModel.setEndIndex(97);
         blockModel.getStatements()
                 .add(createSecondBlockStatement());
 
@@ -117,6 +125,16 @@ public class MethodStatementAnalysisImplTest {
     private StatementModel createSecondBlockStatement() {
         return StatementModel.statementBuilder()
                 .statement("return null;")
+                .startIndex(111)
+                .endIndex(122)
+                .build();
+    }
+
+    private StatementModel createFourthStatement() {
+        return StatementModel.statementBuilder()
+                .statement("}")
+                .startIndex(132)
+                .endIndex(132)
                 .build();
     }
 }
