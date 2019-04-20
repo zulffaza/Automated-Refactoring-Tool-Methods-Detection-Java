@@ -65,7 +65,7 @@ public class MethodStatementAnalysisImpl implements MethodStatementAnalysis {
 
     private void saveStatement(Character character, SaveStatementVA saveStatementVA) {
         String statement = createStatement(saveStatementVA);
-        StatementModel statementModel = createStatementModel(character, statement);
+        StatementModel statementModel = createStatementModel(character, statement, saveStatementVA);
 
         saveStatementVA.getStatements()
                 .peek()
@@ -75,16 +75,24 @@ public class MethodStatementAnalysisImpl implements MethodStatementAnalysis {
     }
 
     private String createStatement(SaveStatementVA saveStatementVA) {
-        Integer endIndex = saveStatementVA.getEndStatementIndex() + ONE;
+        int inclusiveEndIndex = saveStatementVA.getEndStatementIndex() + ONE;
         String statement = saveStatementVA.getBody()
-                .substring(saveStatementVA.getStartStatementIndex(), endIndex)
+                .substring(saveStatementVA.getStartStatementIndex(), inclusiveEndIndex)
                 .trim();
-        saveStatementVA.setStartStatementIndex(endIndex);
+
+        changeIntoRealStartIndex(statement, saveStatementVA);
 
         return statement;
     }
 
-    private StatementModel createStatementModel(Character character, String statement) {
+    private void changeIntoRealStartIndex(String statement, SaveStatementVA saveStatementVA) {
+        int realStartIndex = saveStatementVA.getBody()
+                .indexOf(statement, saveStatementVA.getStartStatementIndex());
+        saveStatementVA.setStartStatementIndex(realStartIndex);
+    }
+
+    private StatementModel createStatementModel(Character character, String statement,
+                                                SaveStatementVA saveStatementVA) {
         StatementModel statementModel = null;
 
         if (character.equals(SEMICOLON)) {
@@ -94,6 +102,8 @@ public class MethodStatementAnalysisImpl implements MethodStatementAnalysis {
         if (character.equals(OPEN_BRACES)) {
             statementModel = buildBlockModel(statement);
         }
+
+        addIndexToStatementModel(statementModel, saveStatementVA);
 
         return statementModel;
     }
@@ -110,6 +120,15 @@ public class MethodStatementAnalysisImpl implements MethodStatementAnalysis {
         blockModel.setStatement(statement);
 
         return blockModel;
+    }
+
+    private void addIndexToStatementModel(StatementModel statementModel, SaveStatementVA saveStatementVA) {
+        if (statementModel != null) {
+            statementModel.setStartIndex(saveStatementVA.getStartStatementIndex());
+            statementModel.setEndIndex(saveStatementVA.getEndStatementIndex());
+        }
+
+        saveStatementVA.setStartStatementIndex(saveStatementVA.getEndStatementIndex() + ONE);
     }
 
     private void saveNewBlock(StatementModel statementModel, SaveStatementVA saveStatementVA) {
@@ -138,5 +157,7 @@ public class MethodStatementAnalysisImpl implements MethodStatementAnalysis {
         saveStatementVA.getStatements()
                 .peek()
                 .add(statementModel);
+
+        addIndexToStatementModel(statementModel, saveStatementVA);
     }
 }
