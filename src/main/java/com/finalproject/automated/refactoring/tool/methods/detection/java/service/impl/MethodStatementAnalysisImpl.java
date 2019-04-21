@@ -10,6 +10,8 @@ import com.finalproject.automated.refactoring.tool.utils.service.StatementHelper
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+
 /**
  * @author Faza Zulfika P P
  * @version 1.0.0
@@ -154,10 +156,16 @@ public class MethodStatementAnalysisImpl implements MethodStatementAnalysis {
                 .statement(statement)
                 .build();
 
-        saveStatementVA.getStatements()
-                .peek()
-                .add(statementModel);
-
         addIndexToStatementModel(statementModel, saveStatementVA);
+        saveEndOfBlockStatement(statementModel, saveStatementVA);
+    }
+
+    private void saveEndOfBlockStatement(StatementModel statementModel, SaveStatementVA saveStatementVA) {
+        List<StatementModel> lastBlock = saveStatementVA.getStatements()
+                .peek();
+        int lastBlockIndex = lastBlock.size() - ONE;
+
+        ((BlockModel) lastBlock.get(lastBlockIndex))
+                .setEndOfBlockStatement(statementModel);
     }
 }
