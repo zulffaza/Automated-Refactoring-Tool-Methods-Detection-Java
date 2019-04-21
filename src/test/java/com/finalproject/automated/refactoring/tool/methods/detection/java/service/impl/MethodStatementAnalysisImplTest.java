@@ -76,8 +76,6 @@ public class MethodStatementAnalysisImplTest {
 
         statements.add(createFirstStatement());
         statements.add(createSecondStatement());
-        statements.add(createThirdStatement());
-        statements.add(createFourthStatement());
 
         return statements;
     }
@@ -90,6 +88,7 @@ public class MethodStatementAnalysisImplTest {
         blockModel.setEndIndex(4);
         blockModel.getStatements()
                 .add(createFirstBlockStatement());
+        blockModel.setEndOfBlockStatement(createFirstBlockEndStatement());
 
         return blockModel;
     }
@@ -102,7 +101,7 @@ public class MethodStatementAnalysisImplTest {
                 .build();
     }
 
-    private StatementModel createSecondStatement() {
+    private StatementModel createFirstBlockEndStatement() {
         return StatementModel.statementBuilder()
                 .statement("}")
                 .startIndex(64)
@@ -110,7 +109,7 @@ public class MethodStatementAnalysisImplTest {
                 .build();
     }
 
-    private StatementModel createThirdStatement() {
+    private StatementModel createSecondStatement() {
         BlockModel blockModel = BlockModel.blockBuilder()
                 .build();
         blockModel.setStatement("catch (NullPointerException e) {");
@@ -118,6 +117,7 @@ public class MethodStatementAnalysisImplTest {
         blockModel.setEndIndex(97);
         blockModel.getStatements()
                 .add(createSecondBlockStatement());
+        blockModel.setEndOfBlockStatement(createSecondBlockEndStatement());
 
         return blockModel;
     }
@@ -130,7 +130,7 @@ public class MethodStatementAnalysisImplTest {
                 .build();
     }
 
-    private StatementModel createFourthStatement() {
+    private StatementModel createSecondBlockEndStatement() {
         return StatementModel.statementBuilder()
                 .statement("}")
                 .startIndex(132)
