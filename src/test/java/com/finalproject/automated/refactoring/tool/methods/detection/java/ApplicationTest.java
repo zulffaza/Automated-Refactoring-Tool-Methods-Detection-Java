@@ -2,7 +2,9 @@ package com.finalproject.automated.refactoring.tool.methods.detection.java;
 
 import com.finalproject.automated.refactoring.tool.files.detection.model.FileModel;
 import com.finalproject.automated.refactoring.tool.methods.detection.service.MethodsDetection;
+import com.finalproject.automated.refactoring.tool.model.BlockModel;
 import com.finalproject.automated.refactoring.tool.model.MethodModel;
+import com.finalproject.automated.refactoring.tool.model.StatementModel;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -143,6 +145,73 @@ public class ApplicationTest {
                 "}";
     }
 
+    private List<StatementModel> createExpectedStatements() {
+        List<StatementModel> statements = new ArrayList<>();
+
+        statements.add(createFirstStatement());
+        statements.add(createSecondStatement());
+
+        return statements;
+    }
+
+    private StatementModel createFirstStatement() {
+        BlockModel blockModel = BlockModel.blockBuilder()
+                .build();
+        blockModel.setStatement("try {");
+        blockModel.setStartIndex(9);
+        blockModel.setEndIndex(13);
+        blockModel.getStatements()
+                .add(createFirstBlockStatement());
+        blockModel.setEndOfBlockStatement(createFirstBlockEndStatement());
+
+        return blockModel;
+    }
+
+    private StatementModel createFirstBlockStatement() {
+        return StatementModel.statementBuilder()
+                .statement("return user + \"-\" + name + extension;")
+                .startIndex(27)
+                .endIndex(63)
+                .build();
+    }
+
+    private StatementModel createFirstBlockEndStatement() {
+        return StatementModel.statementBuilder()
+                .statement("}")
+                .startIndex(73)
+                .endIndex(73)
+                .build();
+    }
+
+    private StatementModel createSecondStatement() {
+        BlockModel blockModel = BlockModel.blockBuilder()
+                .build();
+        blockModel.setStatement("catch (NullPointerException e) {");
+        blockModel.setStartIndex(75);
+        blockModel.setEndIndex(106);
+        blockModel.getStatements()
+                .add(createSecondBlockStatement());
+        blockModel.setEndOfBlockStatement(createSecondBlockEndStatement());
+
+        return blockModel;
+    }
+
+    private StatementModel createSecondBlockStatement() {
+        return StatementModel.statementBuilder()
+                .statement("return null;")
+                .startIndex(120)
+                .endIndex(131)
+                .build();
+    }
+
+    private StatementModel createSecondBlockEndStatement() {
+        return StatementModel.statementBuilder()
+                .statement("}")
+                .startIndex(141)
+                .endIndex(141)
+                .build();
+    }
+
     private void assertMethodModels(List<MethodModel> methodModels) {
         assertEquals(ONE.intValue(), methodModels.size());
 
@@ -214,6 +283,7 @@ public class ApplicationTest {
 
     private void assertMethodAnother(List<MethodModel> methodModels) {
         assertNotNull(methodModels.get(FIRST_INDEX).getBody());
+        assertEquals(createExpectedStatements(), methodModels.get(FIRST_INDEX).getStatements());
         assertNull(methodModels.get(FIRST_INDEX).getLoc());
     }
 }

@@ -12,7 +12,6 @@ import com.finalproject.automated.refactoring.tool.model.MethodModel;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -56,17 +55,10 @@ public class JavaMethodAnalysis implements MethodAnalysis {
         }
     }
 
-    private synchronized void saveResult(FileModel fileModel, MethodModel methodModel,
-                                         Map<String, List<MethodModel>> result) {
+    private void saveResult(FileModel fileModel, MethodModel methodModel,
+                            Map<String, List<MethodModel>> result) {
         String key = methodsDetectionUtil.getMethodKey(fileModel);
-
-        if (result.containsKey(key))
-            result.get(key).add(methodModel);
-        else {
-            List<MethodModel> methodModels = new ArrayList<>();
-            methodModels.add(methodModel);
-
-            result.put(key, methodModels);
-        }
+        result.get(key)
+                .add(methodModel);
     }
 }
