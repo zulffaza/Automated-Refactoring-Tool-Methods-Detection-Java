@@ -4,6 +4,7 @@ import com.finalproject.automated.refactoring.tool.files.detection.model.FileMod
 import com.finalproject.automated.refactoring.tool.methods.detection.java.service.MethodAttributesAnalysis;
 import com.finalproject.automated.refactoring.tool.methods.detection.java.service.MethodBodyAnalysis;
 import com.finalproject.automated.refactoring.tool.methods.detection.java.service.MethodStatementAnalysis;
+import com.finalproject.automated.refactoring.tool.methods.detection.java.service.MethodVariableAnalysis;
 import com.finalproject.automated.refactoring.tool.methods.detection.java.service.StartIndexAnalysis;
 import com.finalproject.automated.refactoring.tool.methods.detection.model.IndexModel;
 import com.finalproject.automated.refactoring.tool.methods.detection.service.util.MethodsDetectionUtil;
@@ -57,6 +58,9 @@ public class JavaMethodAnalysisTest {
 
     @MockBean
     private MethodStatementAnalysis methodStatementAnalysis;
+
+    @MockBean
+    private MethodVariableAnalysis methodVariableAnalysis;
 
     @MockBean
     private MethodsDetectionUtil methodsDetectionUtil;
@@ -127,6 +131,10 @@ public class JavaMethodAnalysisTest {
 
         doAnswer(this::stubMethodStatementAnalysisIndexModel)
                 .when(methodStatementAnalysis)
+                .analysis(any(MethodModel.class));
+
+        doAnswer(this::stubMethodVariableAnalysisIndexModel)
+                .when(methodVariableAnalysis)
                 .analysis(any(MethodModel.class));
 
         when(methodsDetectionUtil.getMethodKey(fileModel))
@@ -343,6 +351,14 @@ public class JavaMethodAnalysisTest {
 
         methodModel.getStatements()
                 .add(statement);
+        return null;
+    }
+
+    private Answer stubMethodVariableAnalysisIndexModel(InvocationOnMock invocationOnMock) {
+        MethodModel methodModel = invocationOnMock.getArgument(FIRST_INDEX);
+
+        // TODO create mock variable
+
         return null;
     }
 
@@ -563,6 +579,12 @@ public class JavaMethodAnalysisTest {
         verify(methodStatementAnalysis, times(INVOKED_ONCE))
                 .analysis(any(MethodModel.class));
         verifyNoMoreInteractions(methodStatementAnalysis);
+    }
+
+    private void verifyMethodVariableAnalysis() {
+        verify(methodVariableAnalysis, times(INVOKED_ONCE))
+                .analysis(any(MethodModel.class));
+        verifyNoMoreInteractions(methodVariableAnalysis);
     }
 
     private void verifyMethodsDetectionUtil() {

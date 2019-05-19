@@ -1,6 +1,7 @@
 package com.finalproject.automated.refactoring.tool.methods.detection.java.service.impl;
 
 import com.finalproject.automated.refactoring.tool.files.detection.model.FileModel;
+import com.finalproject.automated.refactoring.tool.methods.detection.java.helper.MergeListHelper;
 import com.finalproject.automated.refactoring.tool.methods.detection.java.service.MethodAttributesAnalysis;
 import com.finalproject.automated.refactoring.tool.methods.detection.model.IndexModel;
 import com.finalproject.automated.refactoring.tool.model.MethodModel;
@@ -147,16 +148,15 @@ public class MethodAttributesAnalysisImpl implements MethodAttributesAnalysis {
     private void normalizeKeywords(List<String> words, String delimiter) {
         List<Integer> mergeIndex = new ArrayList<>();
         Stack<String> stack = new Stack<>();
-        Integer index;
 
-        for (index = FIRST_INDEX; index < words.size(); index++) {
+        for (Integer index = FIRST_INDEX; index < words.size(); index++) {
             String word = words.get(index);
 
             if (isMergePoint(word, stack))
                 fillMergeIndex(word, index, mergeIndex);
         }
 
-        mergeKeywords(words, mergeIndex, delimiter);
+        MergeListHelper.mergeListOfString(words, mergeIndex, delimiter);
     }
 
     private Boolean isMergePoint(String word, Stack<String> stack) {
@@ -207,27 +207,6 @@ public class MethodAttributesAnalysisImpl implements MethodAttributesAnalysis {
 
         return result;
     }
-
-    private void mergeKeywords(List<String> words, List<Integer> mergeIndex, String delimiter) {
-        Integer maxSize = mergeIndex.size() - SECOND_INDEX;
-
-        for (Integer index = FIRST_INDEX; index < maxSize; index++) {
-            Integer startPoint = mergeIndex.get(index);
-            Integer endPoint = mergeIndex.get(++index);
-
-            words.set(startPoint, String.join(delimiter, words.subList(startPoint, ++endPoint)));
-        }
-
-        for (Integer index = maxSize; index > FIRST_INDEX; index--) {
-            Integer endPoint = mergeIndex.get(index);
-            Integer startPoint = mergeIndex.get(--index) + SECOND_INDEX;
-
-            for (Integer count = startPoint; count <= endPoint; count++) {
-                words.remove(startPoint.intValue());
-            }
-        }
-    }
-
 
     private Integer getNumOfReservedWords(Boolean isConstructor) {
         if (isConstructor)

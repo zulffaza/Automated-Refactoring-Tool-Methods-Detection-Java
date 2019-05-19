@@ -84,7 +84,7 @@ public class MethodVariableAnalysisImplTest {
     private StatementModel createSecondStatement() {
         BlockModel blockModel = BlockModel.blockBuilder()
                 .build();
-        blockModel.setStatement("List<String> variables = new ArrayList<>(splitStatement);");
+        blockModel.setStatement("Boolean lastIsString = isString.get();");
         blockModel.setStartIndex(66);
         blockModel.setEndIndex(97);
         blockModel.getStatements()
