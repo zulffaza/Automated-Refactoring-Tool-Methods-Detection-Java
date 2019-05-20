@@ -4,6 +4,7 @@ import com.finalproject.automated.refactoring.tool.methods.detection.java.helper
 import com.finalproject.automated.refactoring.tool.methods.detection.java.service.MethodVariableAnalysis;
 import com.finalproject.automated.refactoring.tool.model.BlockModel;
 import com.finalproject.automated.refactoring.tool.model.MethodModel;
+import com.finalproject.automated.refactoring.tool.model.PropertyModel;
 import com.finalproject.automated.refactoring.tool.model.StatementModel;
 import lombok.NonNull;
 import org.springframework.stereotype.Service;
@@ -24,8 +25,6 @@ import java.util.stream.Stream;
 @Service
 public class MethodVariableAnalysisImpl implements MethodVariableAnalysis {
 
-    // Get variable used inside array index
-
     private static final String WHITESPACE_REGEX = "\\s";
     private static final String SPACE_DELIMITER = " ";
     private static final String ESCAPE = "\\";
@@ -36,10 +35,12 @@ public class MethodVariableAnalysisImpl implements MethodVariableAnalysis {
     private static final String POINT_REGEX = "\\.";
     private static final String VARIABLE_NAME_REGEX = "^(?:[a-zA-Z_$])(?:[a-zA-Z0-9_$<>\\[\\]])*";
     private static final String OPEN_SQUARE_BRACKETS = "[";
+    private static final String OPEN_SQUARE_BRACKETS_REGEX = "\\" + OPEN_SQUARE_BRACKETS;
     private static final String CLOSE_SQUARE_BRACKETS = "]";
 
     private static final Integer FIRST_INDEX = 0;
     private static final Integer SECOND_INDEX = 1;
+    private static final Integer SINGLE_LIST_SIZE = 1;
 
     private static final List<String> KEYWORDS = Arrays.asList(
             "class",
@@ -84,7 +85,7 @@ public class MethodVariableAnalysisImpl implements MethodVariableAnalysis {
         variables = new ArrayList<>(variables);
 
         normalizeString(variables);
-        doReadVariable(variables);
+        doReadVariable(variables, methodModel);
     }
 
     private void normalizeString(List<String> variables) {
@@ -106,8 +107,8 @@ public class MethodVariableAnalysisImpl implements MethodVariableAnalysis {
         AtomicBoolean isEscape = new AtomicBoolean();
         Boolean lastIsString = isString.get();
 
-        for (Integer newIndex = FIRST_INDEX; newIndex < variable.length(); newIndex++) {
-            String character = variable.substring(newIndex, newIndex + SECOND_INDEX);
+        for (Integer index = FIRST_INDEX; index < variable.length(); index++) {
+            String character = variable.substring(index, index + SECOND_INDEX);
 
             if (isLastEscape(isEscape)) {
                 continue;
@@ -146,13 +147,16 @@ public class MethodVariableAnalysisImpl implements MethodVariableAnalysis {
         return lastIsString != isString;
     }
 
-    private void doReadVariable(List<String> variables) {
+    private void doReadVariable(List<String> variables, MethodModel methodModel) {
+        AtomicBoolean isClass = new AtomicBoolean();
+
         variables.stream()
                 .filter(this::isNotString)
                 .flatMap(this::removeUnusedCharacter)
+                .flatMap(this::splitArrayVariables)
                 .map(this::removeCalledFields)
                 .filter(this::isVariable)
-                .forEach(System.out::println);
+                .forEach(variable -> saveVariable(variable, isClass, methodModel));
     }
 
     private Boolean isNotString(String variable) {
@@ -184,6 +188,43 @@ public class MethodVariableAnalysisImpl implements MethodVariableAnalysis {
         return split;
     }
 
+    private Stream<String> splitArrayVariables(String variable) {
+        List<String> split = Arrays.asList(variable.split(OPEN_SQUARE_BRACKETS_REGEX));
+        split = new ArrayList<>(split);
+
+        if (split.size() > SINGLE_LIST_SIZE) {
+            customizeArrayVariables(split);
+        }
+
+        return split.stream();
+    }
+
+    private void customizeArrayVariables(List<String> split) {
+        if (split.get(SECOND_INDEX).equals(CLOSE_SQUARE_BRACKETS)) {
+            undoSplitArrayVariables(split);
+        } else {
+            removeFirstIndex(split);
+        }
+    }
+
+    private void undoSplitArrayVariables(List<String> split) {
+        split.set(FIRST_INDEX, String.join(OPEN_SQUARE_BRACKETS,
+                split.get(FIRST_INDEX), split.get(SECOND_INDEX)));
+        split.remove(SECOND_INDEX.intValue());
+    }
+
+    private void removeFirstIndex(List<String> split) {
+        for (Integer index = FIRST_INDEX; index < split.size(); index++) {
+            split.set(index, removeCloseSquareBrackets(split.get(index)));
+        }
+
+        split.remove(FIRST_INDEX.intValue());
+    }
+
+    private String removeCloseSquareBrackets(String variable) {
+        return variable.replace(CLOSE_SQUARE_BRACKETS, EMPTY_STRING);
+    }
+
     private String removeCalledFields(String variable) {
         List<String> split = Arrays.asList(variable.split(POINT_REGEX));
         split = createNewListIfSplitEmpty(split, variable);
@@ -201,11 +242,89 @@ public class MethodVariableAnalysisImpl implements MethodVariableAnalysis {
     }
 
     private Boolean isContainsKeywords(List<String> split) {
-        return split.size() > 1 && KEYWORDS.contains(split.get(FIRST_INDEX));
+        return split.size() > SINGLE_LIST_SIZE && KEYWORDS.contains(split.get(FIRST_INDEX));
     }
 
     private Boolean isVariable(String variable) {
         return variable.matches(VARIABLE_NAME_REGEX) &&
                 !KEYWORDS.contains(variable);
+    }
+
+    private void saveVariable(String variable, AtomicBoolean isClass, MethodModel methodModel) {
+        if (isClassName(variable)) {
+            savePropertyType(variable, isClass, methodModel);
+        } else {
+            checkVariableDomain(variable, isClass, methodModel);
+        }
+    }
+
+    private Boolean isClassName(String variable) {
+        return Character.isUpperCase(variable.charAt(FIRST_INDEX));
+    }
+
+    private void savePropertyType(String variable, AtomicBoolean isClass, MethodModel methodModel) {
+        PropertyModel propertyModel = PropertyModel.builder()
+                .type(variable)
+                .build();
+
+        methodModel.getLocalVariables()
+                .add(propertyModel);
+
+        isClass.set(Boolean.TRUE);
+    }
+
+    private void checkVariableDomain(String variable, AtomicBoolean isClass, MethodModel methodModel) {
+        if (isClass.get()) {
+            saveLocalVariable(variable, isClass, methodModel);
+        } else {
+            checkVariable(variable, methodModel);
+        }
+    }
+
+    private void saveLocalVariable(String variable, AtomicBoolean isClass, MethodModel methodModel) {
+        int lastIndex = methodModel.getLocalVariables().size() - SINGLE_LIST_SIZE;
+        methodModel.getLocalVariables()
+                .get(lastIndex)
+                .setName(variable);
+
+        isClass.set(Boolean.FALSE);
+    }
+
+    private void checkVariable(String variable, MethodModel methodModel) {
+        if (isVariableUsed(variable, methodModel)) {
+            saveGlobalVariable(variable, methodModel);
+        }
+    }
+
+    private Boolean isVariableUsed(String variable, MethodModel methodModel) {
+        return !isParameter(variable, methodModel) &&
+                !isLocalVariable(variable, methodModel) &&
+                !isGlobalVariable(variable, methodModel);
+    }
+
+    private Boolean isParameter(String variable, MethodModel methodModel) {
+        return methodModel.getParameters()
+                .stream()
+                .anyMatch(propertyModel -> isContainsVariable(variable, propertyModel));
+    }
+
+    private Boolean isContainsVariable(String variable, PropertyModel propertyModel) {
+        return propertyModel.getName().equals(variable);
+    }
+
+    private Boolean isLocalVariable(String variable, MethodModel methodModel) {
+        return methodModel.getLocalVariables()
+                .stream()
+                .anyMatch(propertyModel -> isContainsVariable(variable, propertyModel));
+    }
+
+    private Boolean isGlobalVariable(String variable, MethodModel methodModel) {
+        return methodModel.getGlobalVariables()
+                .contains(variable);
+    }
+
+    private void saveGlobalVariable(String variable, MethodModel methodModel) {
+        methodModel.getGlobalVariables()
+                .add(variable);
     }
 }

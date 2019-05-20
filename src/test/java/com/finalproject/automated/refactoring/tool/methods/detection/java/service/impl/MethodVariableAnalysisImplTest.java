@@ -41,6 +41,21 @@ public class MethodVariableAnalysisImplTest {
     @Test
     public void analysis() {
         methodVariableAnalysis.analysis(methodModel);
+
+        System.out.println("Global variables : ");
+
+        methodModel.getGlobalVariables()
+                .forEach(System.out::println);
+
+        System.out.println();
+        System.out.println("Local variables : ");
+
+        methodModel.getLocalVariables()
+                .forEach(propertyModel -> {
+                    System.out.println("Type --> " + propertyModel.getType());
+                    System.out.println("Name --> " + propertyModel.getName());
+                    System.out.println();
+                });
     }
 
     private List<StatementModel> createExpectedStatements() {
@@ -84,7 +99,7 @@ public class MethodVariableAnalysisImplTest {
     private StatementModel createSecondStatement() {
         BlockModel blockModel = BlockModel.blockBuilder()
                 .build();
-        blockModel.setStatement("Boolean lastIsString = isString.get();");
+        blockModel.setStatement("catch (NullPointerException e) {");
         blockModel.setStartIndex(66);
         blockModel.setEndIndex(97);
         blockModel.getStatements()
