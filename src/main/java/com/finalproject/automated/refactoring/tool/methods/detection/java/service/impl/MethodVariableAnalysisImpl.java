@@ -35,7 +35,8 @@ public class MethodVariableAnalysisImpl implements MethodVariableAnalysis {
     private static final String DOUBLE_QUOTES = "\"";
     private static final String EMPTY_STRING = "";
     private static final String OPEN_PARENTHESES = "(";
-    private static final String UNUSED_CHARACTERS_REGEX = "(?:[,):;!+-])+";
+    private static final String CLOSE_PARENTHESES = ")";
+    private static final String UNUSED_CHARACTERS_REGEX = "(?:[,:;!+-])+";
     private static final String POINT_REGEX = "\\.";
     private static final String VARIABLE_NAME_REGEX = "^(?:[a-zA-Z_$])(?:[a-zA-Z0-9_$<>\\[\\]])*";
     private static final String OPEN_SQUARE_BRACKETS = "[";
@@ -67,8 +68,8 @@ public class MethodVariableAnalysisImpl implements MethodVariableAnalysis {
     /*
         TODO BUGS ALERT!!!
 
-        TODO instanceof ClassName --> Still read for type
-        TODO casting type --> Still read for type
+        TODO instanceof ClassName --> Still read for type (DONE)
+        TODO casting type --> Still read for type (DONE)
         TODO inner class type --> Parent class isn't read
         TODO inner class type --> Read as variable
         TODO called variable using method --> Read as variable
@@ -187,14 +188,37 @@ public class MethodVariableAnalysisImpl implements MethodVariableAnalysis {
             variable = variable.replace(OPEN_PARENTHESES, OPEN_PARENTHESES + SPACE_DELIMITER);
         }
 
+        if (variable.contains(CLOSE_PARENTHESES)) {
+            variable = variable.replace(CLOSE_PARENTHESES, SPACE_DELIMITER + CLOSE_PARENTHESES + SPACE_DELIMITER);
+        }
+
         return splitMethodParameters(variable);
     }
 
     private Stream<String> splitMethodParameters(String variable) {
         List<String> split = Arrays.asList(variable.split(WHITESPACE_REGEX));
         split = createNewListIfSplitEmpty(split, variable);
+        removeCastingType(split);
 
         return split.stream();
+    }
+
+    private void removeCastingType(List<String> split) {
+        List<Integer> removeIndex = new ArrayList<>();
+
+        for (Integer index = FIRST_INDEX; index < (split.size() - SECOND_INDEX); index++) {
+            if (isRemoveIndex(split, index, split.get(index + SECOND_INDEX))) {
+                removeIndex.add(index);
+            }
+        }
+
+        for (Integer index = removeIndex.size() - SECOND_INDEX; index >= FIRST_INDEX; index--) {
+            split.remove(removeIndex.get(index).intValue());
+        }
+    }
+
+    private Boolean isRemoveIndex(List<String> split, Integer index, String nextVariable) {
+        return isContainsKeywordsOrClass(split, index) && nextVariable.equals(CLOSE_PARENTHESES);
     }
 
     private List<String> createNewListIfSplitEmpty(List<String> split, String variable) {
@@ -256,13 +280,13 @@ public class MethodVariableAnalysisImpl implements MethodVariableAnalysis {
     }
 
     private void ifContainsKeywords(List<String> split) {
-        if (isContainsKeywordsOrClass(split)) {
+        if (isContainsKeywordsOrClass(split, FIRST_INDEX)) {
             split.set(FIRST_INDEX, split.get(SECOND_INDEX));
         }
     }
 
-    private Boolean isContainsKeywordsOrClass(List<String> split) {
-        String variable = split.get(FIRST_INDEX);
+    private Boolean isContainsKeywordsOrClass(List<String> split, Integer index) {
+        String variable = split.get(index);
 
         return split.size() > SINGLE_LIST_SIZE &&
                 (KEYWORDS.contains(variable) || isClassName(variable));
