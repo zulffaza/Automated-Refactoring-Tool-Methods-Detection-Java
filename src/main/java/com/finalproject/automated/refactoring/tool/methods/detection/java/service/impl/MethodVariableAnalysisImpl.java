@@ -14,6 +14,8 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
@@ -25,6 +27,8 @@ import java.util.stream.Stream;
 @Service
 public class MethodVariableAnalysisImpl implements MethodVariableAnalysis {
 
+    private static final Character UNDERSCORE_CHARACTER = '_';
+
     private static final String WHITESPACE_REGEX = "\\s";
     private static final String SPACE_DELIMITER = " ";
     private static final String ESCAPE = "\\";
@@ -35,7 +39,6 @@ public class MethodVariableAnalysisImpl implements MethodVariableAnalysis {
     private static final String POINT_REGEX = "\\.";
     private static final String VARIABLE_NAME_REGEX = "^(?:[a-zA-Z_$])(?:[a-zA-Z0-9_$<>\\[\\]])*";
     private static final String OPEN_SQUARE_BRACKETS = "[";
-    private static final String OPEN_SQUARE_BRACKETS_REGEX = "\\" + OPEN_SQUARE_BRACKETS;
     private static final String CLOSE_SQUARE_BRACKETS = "]";
 
     private static final Integer FIRST_INDEX = 0;
@@ -61,6 +64,16 @@ public class MethodVariableAnalysisImpl implements MethodVariableAnalysis {
             "boolean"
     );
 
+    /*
+        TODO BUGS ALERT!!!
+
+        TODO instanceof ClassName --> Still read for type
+        TODO casting type --> Still read for type
+        TODO inner class type --> Parent class isn't read
+        TODO inner class type --> Read as variable
+        TODO called variable using method --> Read as variable
+     */
+
     @Override
     public void analysis(@NonNull MethodModel methodModel) {
         methodModel.getStatements()
@@ -84,7 +97,6 @@ public class MethodVariableAnalysisImpl implements MethodVariableAnalysis {
         List<String> variables = Arrays.asList(statement.split(WHITESPACE_REGEX));
         variables = new ArrayList<>(variables);
 
-        normalizeString(variables);
         doReadVariable(variables, methodModel);
     }
 
@@ -150,9 +162,14 @@ public class MethodVariableAnalysisImpl implements MethodVariableAnalysis {
     private void doReadVariable(List<String> variables, MethodModel methodModel) {
         AtomicBoolean isClass = new AtomicBoolean();
 
+        variables = variables.stream()
+                .flatMap(this::removeUnusedCharacter)
+                .collect(Collectors.toList());
+
+        normalizeString(variables);
+
         variables.stream()
                 .filter(this::isNotString)
-                .flatMap(this::removeUnusedCharacter)
                 .flatMap(this::splitArrayVariables)
                 .map(this::removeCalledFields)
                 .filter(this::isVariable)
@@ -182,15 +199,18 @@ public class MethodVariableAnalysisImpl implements MethodVariableAnalysis {
 
     private List<String> createNewListIfSplitEmpty(List<String> split, String variable) {
         if (split.isEmpty()) {
-            return Collections.singletonList(variable);
+            split = Collections.singletonList(variable);
         }
+
+        split = new ArrayList<>(split);
+        split.removeIf(String::isEmpty);
 
         return split;
     }
 
     private Stream<String> splitArrayVariables(String variable) {
-        List<String> split = Arrays.asList(variable.split(OPEN_SQUARE_BRACKETS_REGEX));
-        split = new ArrayList<>(split);
+        List<String> split = Arrays.asList(variable.split(Pattern.quote(OPEN_SQUARE_BRACKETS)));
+        split = createNewListIfSplitEmpty(split, variable);
 
         if (split.size() > SINGLE_LIST_SIZE) {
             customizeArrayVariables(split);
@@ -236,13 +256,16 @@ public class MethodVariableAnalysisImpl implements MethodVariableAnalysis {
     }
 
     private void ifContainsKeywords(List<String> split) {
-        if (isContainsKeywords(split)) {
+        if (isContainsKeywordsOrClass(split)) {
             split.set(FIRST_INDEX, split.get(SECOND_INDEX));
         }
     }
 
-    private Boolean isContainsKeywords(List<String> split) {
-        return split.size() > SINGLE_LIST_SIZE && KEYWORDS.contains(split.get(FIRST_INDEX));
+    private Boolean isContainsKeywordsOrClass(List<String> split) {
+        String variable = split.get(FIRST_INDEX);
+
+        return split.size() > SINGLE_LIST_SIZE &&
+                (KEYWORDS.contains(variable) || isClassName(variable));
     }
 
     private Boolean isVariable(String variable) {
@@ -251,15 +274,39 @@ public class MethodVariableAnalysisImpl implements MethodVariableAnalysis {
     }
 
     private void saveVariable(String variable, AtomicBoolean isClass, MethodModel methodModel) {
-        if (isClassName(variable)) {
+        if (isPropertyType(variable)) {
             savePropertyType(variable, isClass, methodModel);
         } else {
             checkVariableDomain(variable, isClass, methodModel);
         }
     }
 
+    private Boolean isPropertyType(String variable) {
+        return PRIMITIVE_TYPES.contains(variable) || isClassName(variable);
+    }
+
     private Boolean isClassName(String variable) {
-        return Character.isUpperCase(variable.charAt(FIRST_INDEX));
+        return Character.isUpperCase(variable.charAt(FIRST_INDEX)) && !isConst(variable);
+    }
+
+    private Boolean isConst(String variable) {
+        Integer index;
+
+        for (index = FIRST_INDEX; index < variable.length(); index++) {
+            if (!isComplete(variable.charAt(index))) {
+                break;
+            }
+        }
+
+        return isSuccess(variable, index);
+    }
+
+    private Boolean isComplete(Character character) {
+        return Character.isUpperCase(character) || character.equals(UNDERSCORE_CHARACTER);
+    }
+
+    private Boolean isSuccess(String variable, Integer index) {
+        return index == variable.length();
     }
 
     private void savePropertyType(String variable, AtomicBoolean isClass, MethodModel methodModel) {

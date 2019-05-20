@@ -1,5 +1,6 @@
 package com.finalproject.automated.refactoring.tool.methods.detection.java.service.impl;
 
+import com.finalproject.automated.refactoring.tool.methods.detection.java.service.MethodBodyAnalysis;
 import com.finalproject.automated.refactoring.tool.methods.detection.model.IndexModel;
 import com.finalproject.automated.refactoring.tool.model.MethodModel;
 import org.junit.Before;
@@ -15,7 +16,7 @@ import static org.junit.Assert.assertEquals;
 
 public class MethodBodyAnalysisImplTest {
 
-    private MethodBodyAnalysisImpl methodBodyAnalysis;
+    private MethodBodyAnalysis methodBodyAnalysis;
 
     private String content;
 

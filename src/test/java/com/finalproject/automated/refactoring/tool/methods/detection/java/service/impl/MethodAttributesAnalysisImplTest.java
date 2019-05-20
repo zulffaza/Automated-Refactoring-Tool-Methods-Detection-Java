@@ -1,6 +1,7 @@
 package com.finalproject.automated.refactoring.tool.methods.detection.java.service.impl;
 
 import com.finalproject.automated.refactoring.tool.files.detection.model.FileModel;
+import com.finalproject.automated.refactoring.tool.methods.detection.java.service.MethodAttributesAnalysis;
 import com.finalproject.automated.refactoring.tool.methods.detection.model.IndexModel;
 import com.finalproject.automated.refactoring.tool.model.MethodModel;
 import com.finalproject.automated.refactoring.tool.model.PropertyModel;
@@ -19,7 +20,7 @@ import static org.junit.Assert.assertEquals;
 
 public class MethodAttributesAnalysisImplTest {
 
-    private MethodAttributesAnalysisImpl methodAttributesAnalysis;
+    private MethodAttributesAnalysis methodAttributesAnalysis;
 
     private FileModel fileModel;
 
@@ -133,9 +134,9 @@ public class MethodAttributesAnalysisImplTest {
                 "    }\n" +
                 "\n" +
                 "    @Bean\n" +
-                "    (\n"+
-                "        name = \"FileExtension\"\n"+
-                "    )\n"+
+                "    (\n" +
+                "        name = \"FileExtension\"\n" +
+                "    )\n" +
                 "    public String @getExtension() {\n" +
                 "        return extension;\n" +
                 "    }\n" +

@@ -6,15 +6,9 @@ import com.finalproject.automated.refactoring.tool.model.MethodModel;
 import com.finalproject.automated.refactoring.tool.model.StatementModel;
 import org.junit.Before;
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.junit4.SpringRunner;
 
 import java.util.ArrayList;
 import java.util.List;
-
-import static org.junit.Assert.*;
 
 /**
  * @author fazazulfikapp
@@ -22,17 +16,15 @@ import static org.junit.Assert.*;
  * @since 14 May 2019
  */
 
-@RunWith(SpringRunner.class)
-@SpringBootTest
 public class MethodVariableAnalysisImplTest {
 
-    @Autowired
     private MethodVariableAnalysis methodVariableAnalysis;
 
     private MethodModel methodModel;
 
     @Before
     public void setUp() {
+        methodVariableAnalysis = new MethodVariableAnalysisImpl();
         methodModel = MethodModel.builder()
                 .statements(createExpectedStatements())
                 .build();
