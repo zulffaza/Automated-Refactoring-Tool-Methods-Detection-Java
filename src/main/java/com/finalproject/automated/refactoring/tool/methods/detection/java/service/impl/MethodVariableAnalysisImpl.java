@@ -1,6 +1,7 @@
 package com.finalproject.automated.refactoring.tool.methods.detection.java.service.impl;
 
 import com.finalproject.automated.refactoring.tool.methods.detection.java.helper.MergeListHelper;
+import com.finalproject.automated.refactoring.tool.methods.detection.java.model.NormalizeGenericsVA;
 import com.finalproject.automated.refactoring.tool.methods.detection.java.service.MethodVariableAnalysis;
 import com.finalproject.automated.refactoring.tool.model.BlockModel;
 import com.finalproject.automated.refactoring.tool.model.MethodModel;
@@ -13,7 +14,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.Stack;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -46,6 +46,7 @@ public class MethodVariableAnalysisImpl implements MethodVariableAnalysis {
     private static final String VARIABLE_NAME_REGEX = "^(?:[a-zA-Z_$])(?:[a-zA-Z0-9_$<>\\[\\].,\\s])*";
     private static final String LESS_THAN = "<";
     private static final String GREATER_THAN = ">";
+    private static final String COMMA_SEPARATOR = ", ";
     private static final String OPEN_SQUARE_BRACKETS = "[";
     private static final String CLOSE_SQUARE_BRACKETS = "]";
 
@@ -178,7 +179,7 @@ public class MethodVariableAnalysisImpl implements MethodVariableAnalysis {
 
     private String createDelimiter(String operator) {
         if (REGEX_SPECIAL_CHARACTERS.contains(operator)) {
-            operator = "\\" + operator;
+            operator = ESCAPE + operator;
         }
 
         return operator;
@@ -322,51 +323,71 @@ public class MethodVariableAnalysisImpl implements MethodVariableAnalysis {
     private void normalizeGenerics(List<String> variables) {
         Integer maxSize = variables.size() - SECOND_INDEX;
 
-        List<Integer> mergeIndex = new ArrayList<>();
-        Stack<String> stack = new Stack<>();
-        Boolean isGenerics = Boolean.FALSE;
+        NormalizeGenericsVA normalizeGenericsVA = NormalizeGenericsVA.builder()
+                .build();
 
         for (Integer index = FIRST_INDEX; index < maxSize; index++) {
-            String variable = variables.get(index);
-            String nextVariable = variables.get(index + SECOND_INDEX);
+            normalizeGenericsVA.setVariable(variables.get(index));
+            normalizeGenericsVA.setNextVariable(variables.get(index + SECOND_INDEX));
 
-            if (variable.contains(DOUBLE_QUOTES)) {
-                continue;
-            }
-
-            if (!isGenerics && isOpeningGenerics(variable, nextVariable, stack)) {
-                isGenerics = Boolean.TRUE;
-                mergeIndex.add(index);
-            }
-
-            if (variable.equals(LESS_THAN)) {
-                stack.push(LESS_THAN);
-            }
-
-            if (variable.equals(GREATER_THAN)) {
-                if (!stack.isEmpty()) {
-                    stack.pop();
-                }
-
-                if (stack.isEmpty() && isGenerics) {
-                    isGenerics = Boolean.FALSE;
-                    Integer savedIndex = index;
-
-                    if (nextVariable.equals(OPEN_PARENTHESES)) {
-                        savedIndex++;
-                    }
-
-                    mergeIndex.add(savedIndex);
-                }
-            }
+            checkGenerics(index, normalizeGenericsVA);
         }
 
-        beautifyGenerics(variables, mergeIndex);
-        MergeListHelper.mergeListOfString(variables, mergeIndex, EMPTY_STRING);
+        beautifyGenerics(variables, normalizeGenericsVA.getMergeIndex());
+        MergeListHelper.mergeListOfString(variables, normalizeGenericsVA.getMergeIndex(), EMPTY_STRING);
     }
 
-    private Boolean isOpeningGenerics(String variable, String nextVariable, Stack stack) {
-        return isClassName(variable) && nextVariable.equals(LESS_THAN) && stack.isEmpty();
+    private void checkGenerics(Integer index, NormalizeGenericsVA normalizeGenericsVA) {
+        if (isOpeningGenerics(normalizeGenericsVA)) {
+            saveOpeningGenericsIndex(index, normalizeGenericsVA);
+        }
+
+        if (normalizeGenericsVA.getVariable().equals(LESS_THAN)) {
+            normalizeGenericsVA.getStack().push(LESS_THAN);
+        }
+
+        if (normalizeGenericsVA.getVariable().equals(GREATER_THAN)) {
+            normalizeClosingGenerics(index, normalizeGenericsVA);
+        }
+    }
+
+    private void saveOpeningGenericsIndex(Integer index,
+                                          NormalizeGenericsVA normalizeGenericsVA) {
+        normalizeGenericsVA.getIsGenerics().set(Boolean.TRUE);
+        normalizeGenericsVA.getMergeIndex().add(index);
+    }
+
+    private Boolean isOpeningGenerics(NormalizeGenericsVA normalizeGenericsVA) {
+        return isClassName(normalizeGenericsVA.getVariable()) &&
+                normalizeGenericsVA.getNextVariable().equals(LESS_THAN) &&
+                normalizeGenericsVA.getStack().isEmpty() &&
+                !normalizeGenericsVA.getIsGenerics().get();
+    }
+
+    private void normalizeClosingGenerics(Integer index,
+                                          NormalizeGenericsVA normalizeGenericsVA) {
+        if (!normalizeGenericsVA.getStack().isEmpty()) {
+            normalizeGenericsVA.getStack().pop();
+        }
+
+        if (isClosingGenerics(normalizeGenericsVA)) {
+            saveClosingGenericsIndex(index, normalizeGenericsVA);
+        }
+    }
+
+    private Boolean isClosingGenerics(NormalizeGenericsVA normalizeGenericsVA) {
+        return normalizeGenericsVA.getStack().isEmpty() &&
+                normalizeGenericsVA.getIsGenerics().get();
+    }
+
+    private void saveClosingGenericsIndex(Integer index,
+                                          NormalizeGenericsVA normalizeGenericsVA) {
+        if (normalizeGenericsVA.getNextVariable().equals(OPEN_PARENTHESES)) {
+            index++;
+        }
+
+        normalizeGenericsVA.getIsGenerics().set(Boolean.FALSE);
+        normalizeGenericsVA.getMergeIndex().add(index);
     }
 
     private void beautifyGenerics(List<String> variables, List<Integer> mergeIndex) {
@@ -390,7 +411,7 @@ public class MethodVariableAnalysisImpl implements MethodVariableAnalysis {
             String nextVariable = variables.get(index + SECOND_INDEX);
 
             if (isNeedCommaSeparator(variable, nextVariable)) {
-                variables.set(index, variable + ", ");
+                variables.set(index, variable + COMMA_SEPARATOR);
             }
         }
     }
