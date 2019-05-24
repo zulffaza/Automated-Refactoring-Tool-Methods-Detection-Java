@@ -17,6 +17,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 /**
@@ -35,14 +36,13 @@ public class MethodVariableAnalysisImpl implements MethodVariableAnalysis {
     private static final String ESCAPE = "\\";
     private static final String DOUBLE_QUOTES = "\"";
     private static final String EMPTY_STRING = "";
+    private static final String GROUP_ZERO_REGEX = "$0";
     private static final String OPEN_PARENTHESES = "(";
-    private static final String OPEN_PARENTHESES_REGEX = "\\" + OPEN_PARENTHESES;
     private static final String CLOSE_PARENTHESES = ")";
-    private static final String CLOSE_PARENTHESES_REGEX = "\\" + CLOSE_PARENTHESES;
     private static final String DOUBLE_COLON = "::";
     private static final String UNUSED_CHARACTERS_REGEX = "(?:[,:;])+";
+    private static final String OPERATORS_CHARACTERS_REGEX = "(?:[+\\-*/%=!<>&|^~])+";
     private static final String POINT = ".";
-    private static final String POINT_REGEX = "\\" + POINT;
     private static final String VARIABLE_NAME_REGEX = "^(?:[a-zA-Z_$])(?:[a-zA-Z0-9_$<>\\[\\].,\\s])*";
     private static final String LESS_THAN = "<";
     private static final String GREATER_THAN = ">";
@@ -54,17 +54,6 @@ public class MethodVariableAnalysisImpl implements MethodVariableAnalysis {
     private static final Integer SECOND_INDEX = 1;
     private static final Integer SINGLE_LIST_SIZE = 1;
     private static final Integer NEXT_CHAR_INDEX_METHOD_REFERENCE = 2;
-
-    private static final List<String> OPERATORS = Arrays.asList(
-            "+", "-", "*", "/", "%",
-            "=",
-            "!", ">", "<",
-            "&", "|", "^", "~"
-    );
-
-    private static final List<String> REGEX_SPECIAL_CHARACTERS = Arrays.asList(
-            "+", "-", "*", ">", "<", "&", "|", "^"
-    );
 
     private static final List<String> KEYWORDS = Arrays.asList(
             "class",
@@ -128,12 +117,15 @@ public class MethodVariableAnalysisImpl implements MethodVariableAnalysis {
     }
 
     private Stream<String> removeUnusedCharacter(String variable) {
-        variable = variable.replaceAll(OPEN_PARENTHESES_REGEX, OPEN_PARENTHESES + SPACE_DELIMITER);
-        variable = variable.replaceAll(CLOSE_PARENTHESES_REGEX, SPACE_DELIMITER + CLOSE_PARENTHESES + SPACE_DELIMITER);
+        variable = variable.replaceAll(Pattern.quote(OPEN_PARENTHESES),
+                GROUP_ZERO_REGEX + SPACE_DELIMITER);
+        variable = variable.replaceAll(Pattern.quote(CLOSE_PARENTHESES),
+                SPACE_DELIMITER + GROUP_ZERO_REGEX + SPACE_DELIMITER);
         variable = changeMethodReferenceIntoMethodCall(variable).replace(DOUBLE_COLON, POINT);
-        variable = variable.replaceAll(POINT_REGEX, SPACE_DELIMITER + POINT);
+        variable = variable.replaceAll(Pattern.quote(POINT), SPACE_DELIMITER + POINT);
         variable = variable.replaceAll(UNUSED_CHARACTERS_REGEX, EMPTY_STRING);
-        variable = normalizeOperators(variable);
+        variable = variable.replaceAll(OPERATORS_CHARACTERS_REGEX,
+                SPACE_DELIMITER + GROUP_ZERO_REGEX + SPACE_DELIMITER);
 
         return splitMethodParameters(variable);
     }
@@ -162,27 +154,6 @@ public class MethodVariableAnalysisImpl implements MethodVariableAnalysis {
 
     private Boolean isEndOfMethodReferenceFound(String variable, Integer index) {
         return index < variable.length() || variable.startsWith(SPACE_DELIMITER, index);
-    }
-
-    private String normalizeOperators(String variable) {
-        for (Integer index = FIRST_INDEX; index < OPERATORS.size(); index++) {
-            variable = normalizeOperator(variable, OPERATORS.get(index));
-        }
-
-        return variable;
-    }
-
-    private String normalizeOperator(String variable, String operator) {
-        String delimiter = createDelimiter(operator);
-        return variable.replaceAll(delimiter, SPACE_DELIMITER + operator + SPACE_DELIMITER);
-    }
-
-    private String createDelimiter(String operator) {
-        if (REGEX_SPECIAL_CHARACTERS.contains(operator)) {
-            operator = ESCAPE + operator;
-        }
-
-        return operator;
     }
 
     private Stream<String> splitMethodParameters(String variable) {
@@ -282,7 +253,8 @@ public class MethodVariableAnalysisImpl implements MethodVariableAnalysis {
 
         List<String> removeElements = split.subList(SECOND_INDEX, endIndex);
 
-        split.set(FIRST_INDEX, split.get(FIRST_INDEX).replaceAll(POINT_REGEX, EMPTY_STRING));
+        split.set(FIRST_INDEX, split.get(FIRST_INDEX)
+                .replaceAll(Pattern.quote(POINT), EMPTY_STRING));
         split.set(FIRST_INDEX, split.get(FIRST_INDEX) + String.join(EMPTY_STRING, removeElements));
         split.removeAll(removeElements);
     }
@@ -320,6 +292,32 @@ public class MethodVariableAnalysisImpl implements MethodVariableAnalysis {
         return isVariableString(lastIsString, isString.get());
     }
 
+    private Boolean isLastEscape(AtomicBoolean isEscape) {
+        Boolean isLastEscape = isEscape.get();
+
+        if (isLastEscape) {
+            isEscape.set(Boolean.FALSE);
+        }
+
+        return isLastEscape;
+    }
+
+    private void ifEscape(String character, AtomicBoolean isEscape) {
+        if (character.equals(ESCAPE)) {
+            isEscape.set(Boolean.TRUE);
+        }
+    }
+
+    private void ifString(String character, AtomicBoolean isString) {
+        if (character.equals(DOUBLE_QUOTES)) {
+            isString.set(!isString.get());
+        }
+    }
+
+    private Boolean isVariableString(Boolean lastIsString, Boolean isString) {
+        return lastIsString != isString;
+    }
+
     private void normalizeGenerics(List<String> variables) {
         Integer maxSize = variables.size() - SECOND_INDEX;
 
@@ -346,7 +344,7 @@ public class MethodVariableAnalysisImpl implements MethodVariableAnalysis {
             normalizeGenericsVA.getStack().push(LESS_THAN);
         }
 
-        if (normalizeGenericsVA.getVariable().equals(GREATER_THAN)) {
+        if (normalizeGenericsVA.getVariable().contains(GREATER_THAN)) {
             normalizeClosingGenerics(index, normalizeGenericsVA);
         }
     }
@@ -359,16 +357,19 @@ public class MethodVariableAnalysisImpl implements MethodVariableAnalysis {
 
     private Boolean isOpeningGenerics(NormalizeGenericsVA normalizeGenericsVA) {
         return isClassName(normalizeGenericsVA.getVariable()) &&
-                normalizeGenericsVA.getNextVariable().equals(LESS_THAN) &&
+                normalizeGenericsVA.getNextVariable().contains(LESS_THAN) &&
                 normalizeGenericsVA.getStack().isEmpty() &&
                 !normalizeGenericsVA.getIsGenerics().get();
     }
 
     private void normalizeClosingGenerics(Integer index,
                                           NormalizeGenericsVA normalizeGenericsVA) {
-        if (!normalizeGenericsVA.getStack().isEmpty()) {
-            normalizeGenericsVA.getStack().pop();
-        }
+        IntStream.range(FIRST_INDEX, normalizeGenericsVA.getVariable().length())
+                .forEach(value -> {
+                    if (!normalizeGenericsVA.getStack().isEmpty()) {
+                        normalizeGenericsVA.getStack().pop();
+                    }
+                });
 
         if (isClosingGenerics(normalizeGenericsVA)) {
             saveClosingGenericsIndex(index, normalizeGenericsVA);
@@ -417,34 +418,8 @@ public class MethodVariableAnalysisImpl implements MethodVariableAnalysis {
     }
 
     private Boolean isNeedCommaSeparator(String variable, String nextVariable) {
-        return (isClassName(variable) || variable.equals(GREATER_THAN)) &&
-                !nextVariable.equals(LESS_THAN) && !nextVariable.equals(GREATER_THAN);
-    }
-
-    private Boolean isLastEscape(AtomicBoolean isEscape) {
-        Boolean isLastEscape = isEscape.get();
-
-        if (isLastEscape) {
-            isEscape.set(Boolean.FALSE);
-        }
-
-        return isLastEscape;
-    }
-
-    private void ifEscape(String character, AtomicBoolean isEscape) {
-        if (character.equals(ESCAPE)) {
-            isEscape.set(Boolean.TRUE);
-        }
-    }
-
-    private void ifString(String character, AtomicBoolean isString) {
-        if (character.equals(DOUBLE_QUOTES)) {
-            isString.set(!isString.get());
-        }
-    }
-
-    private Boolean isVariableString(Boolean lastIsString, Boolean isString) {
-        return lastIsString != isString;
+        return (isClassName(variable) || variable.contains(GREATER_THAN)) &&
+                !nextVariable.contains(LESS_THAN) && !nextVariable.contains(GREATER_THAN);
     }
 
     private Boolean isNotString(String variable) {
@@ -499,7 +474,7 @@ public class MethodVariableAnalysisImpl implements MethodVariableAnalysis {
 
     private Boolean isVariable(String variable) {
         return (variable.matches(VARIABLE_NAME_REGEX) && !KEYWORDS.contains(variable)) ||
-                OPERATORS.contains(variable);
+                variable.matches(OPERATORS_CHARACTERS_REGEX);
     }
 
     private void saveVariables(List<String> variables, MethodModel methodModel) {
@@ -511,7 +486,7 @@ public class MethodVariableAnalysisImpl implements MethodVariableAnalysis {
     }
 
     private Boolean isNotOperators(String variable) {
-        return !OPERATORS.contains(variable);
+        return !variable.matches(OPERATORS_CHARACTERS_REGEX);
     }
 
     private void saveVariable(String variable, AtomicBoolean isClass, MethodModel methodModel) {
