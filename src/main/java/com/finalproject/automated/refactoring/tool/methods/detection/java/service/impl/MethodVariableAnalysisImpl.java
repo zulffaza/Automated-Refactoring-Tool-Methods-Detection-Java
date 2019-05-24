@@ -43,7 +43,7 @@ public class MethodVariableAnalysisImpl implements MethodVariableAnalysis {
     private static final String UNUSED_CHARACTERS_REGEX = "(?:[,:;])+";
     private static final String POINT = ".";
     private static final String POINT_REGEX = "\\" + POINT;
-    private static final String VARIABLE_NAME_REGEX = "^(?:[a-zA-Z_$])(?:[a-zA-Z0-9_$<>\\[\\].])*";
+    private static final String VARIABLE_NAME_REGEX = "^(?:[a-zA-Z_$])(?:[a-zA-Z0-9_$<>\\[\\].,\\s])*";
     private static final String LESS_THAN = "<";
     private static final String GREATER_THAN = ">";
     private static final String OPEN_SQUARE_BRACKETS = "[";
@@ -84,14 +84,6 @@ public class MethodVariableAnalysisImpl implements MethodVariableAnalysis {
             "boolean"
     );
 
-    /*
-        TODO BUGS ALERT!!!
-
-        TODO inner class type --> Parent class isn't read
-        TODO inner class type --> Read as variable
-        TODO multiple generics --> Failed to read as type
-     */
-
     @Override
     public void analysis(@NonNull MethodModel methodModel) {
         methodModel.getStatements()
@@ -125,12 +117,7 @@ public class MethodVariableAnalysisImpl implements MethodVariableAnalysis {
                 .collect(Collectors.toList());
 
         normalizeString(variables);
-
-//        System.out.println("doReadVariable --> " + String.join(" -> ", variables));
-
-//        normalizeGenerics(variables);
-
-//        System.out.println("doReadVariable --> " + String.join(" -> ", variables));
+        normalizeGenerics(variables);
 
         return variables.stream()
                 .filter(this::isNotString)
@@ -238,6 +225,7 @@ public class MethodVariableAnalysisImpl implements MethodVariableAnalysis {
 
     private void removeStaticClass(List<String> split) {
         Integer maxSize = split.size() - SECOND_INDEX;
+        AtomicBoolean isCallMethod = new AtomicBoolean();
 
         for (Integer index = FIRST_INDEX; index < maxSize; index++) {
             String variable = split.get(index);
@@ -246,6 +234,12 @@ public class MethodVariableAnalysisImpl implements MethodVariableAnalysis {
             if (isStaticMethodCalls(variable, nextVariable)) {
                 flagToIgnore(split, index);
             }
+
+            checkIfCallMethod(variable, isCallMethod);
+        }
+
+        if (isNeedNormalization(split, isCallMethod)) {
+            normalizeCalledMethod(split);
         }
     }
 
@@ -255,6 +249,41 @@ public class MethodVariableAnalysisImpl implements MethodVariableAnalysis {
 
     private void flagToIgnore(List<String> split, Integer index) {
         split.set(index, POINT + split.get(index));
+    }
+
+    private void checkIfCallMethod(String variable, AtomicBoolean isCallMethod) {
+        if (variable.contains(OPEN_PARENTHESES)) {
+            isCallMethod.set(Boolean.TRUE);
+        }
+    }
+
+    private Boolean isNeedNormalization(List<String> split, AtomicBoolean isCallMethod) {
+        boolean isCallField = split.stream()
+                .anyMatch(this::isCalledField);
+
+        return isCallField && !isCallMethod.get();
+    }
+
+    private Boolean isCalledField(String variable) {
+        return variable.contains(POINT);
+    }
+
+    private void normalizeCalledMethod(List<String> split) {
+        Integer endIndex;
+
+        for (endIndex = SECOND_INDEX; endIndex < split.size(); endIndex++) {
+            String variable = split.get(endIndex);
+
+            if (!variable.startsWith(POINT)) {
+                break;
+            }
+        }
+
+        List<String> removeElements = split.subList(SECOND_INDEX, endIndex);
+
+        split.set(FIRST_INDEX, split.get(FIRST_INDEX).replaceAll(POINT_REGEX, EMPTY_STRING));
+        split.set(FIRST_INDEX, split.get(FIRST_INDEX) + String.join(EMPTY_STRING, removeElements));
+        split.removeAll(removeElements);
     }
 
     private void normalizeString(List<String> variables) {
@@ -291,37 +320,36 @@ public class MethodVariableAnalysisImpl implements MethodVariableAnalysis {
     }
 
     private void normalizeGenerics(List<String> variables) {
+        Integer maxSize = variables.size() - SECOND_INDEX;
+
         List<Integer> mergeIndex = new ArrayList<>();
         Stack<String> stack = new Stack<>();
-        Boolean isGenericsClass = Boolean.FALSE;
+        Boolean isGenerics = Boolean.FALSE;
 
-        for (Integer index = FIRST_INDEX; index < variables.size(); index++) {
+        for (Integer index = FIRST_INDEX; index < maxSize; index++) {
             String variable = variables.get(index);
+            String nextVariable = variables.get(index + SECOND_INDEX);
 
             if (variable.contains(DOUBLE_QUOTES)) {
                 continue;
             }
 
-            if (isGenericsClass(variable, stack)) {
-                isGenericsClass = Boolean.TRUE;
-                continue;
+            if (!isGenerics && isOpeningGenerics(variable, nextVariable, stack)) {
+                isGenerics = Boolean.TRUE;
+                mergeIndex.add(index);
             }
 
-            if (variable.equals(LESS_THAN) && isGenericsClass) {
-                if (stack.isEmpty()) {
-                    mergeIndex.add(index - SECOND_INDEX);
-                }
-
+            if (variable.equals(LESS_THAN)) {
                 stack.push(LESS_THAN);
             }
 
-            if (variable.equals(GREATER_THAN) && isGenericsClass) {
+            if (variable.equals(GREATER_THAN)) {
                 if (!stack.isEmpty()) {
                     stack.pop();
                 }
 
-                if (stack.isEmpty()) {
-                    String nextVariable = variables.get(index + SECOND_INDEX);
+                if (stack.isEmpty() && isGenerics) {
+                    isGenerics = Boolean.FALSE;
                     Integer savedIndex = index;
 
                     if (nextVariable.equals(OPEN_PARENTHESES)) {
@@ -333,15 +361,43 @@ public class MethodVariableAnalysisImpl implements MethodVariableAnalysis {
             }
         }
 
-        System.out.println("normalizeGenerics --> ");
-        mergeIndex.forEach(System.out::println);
-        System.out.println();
-
+        beautifyGenerics(variables, mergeIndex);
         MergeListHelper.mergeListOfString(variables, mergeIndex, EMPTY_STRING);
     }
 
-    private Boolean isGenericsClass(String variable, Stack stack) {
-        return isClassName(variable) && stack.isEmpty();
+    private Boolean isOpeningGenerics(String variable, String nextVariable, Stack stack) {
+        return isClassName(variable) && nextVariable.equals(LESS_THAN) && stack.isEmpty();
+    }
+
+    private void beautifyGenerics(List<String> variables, List<Integer> mergeIndex) {
+        Integer maxSize = mergeIndex.size() - SECOND_INDEX;
+
+        for (Integer index = FIRST_INDEX; index < maxSize; index++) {
+            Integer startPoint = mergeIndex.get(index);
+            Integer endPoint = mergeIndex.get(++index);
+
+            beautifyGenericsForRange(variables, startPoint, endPoint);
+        }
+    }
+
+    private void beautifyGenericsForRange(List<String> variables, Integer startPoint, Integer endPoint) {
+        if (variables.get(endPoint).equals(OPEN_PARENTHESES)) {
+            endPoint--;
+        }
+
+        for (Integer index = startPoint; index < endPoint; index++) {
+            String variable = variables.get(index);
+            String nextVariable = variables.get(index + SECOND_INDEX);
+
+            if (isNeedCommaSeparator(variable, nextVariable)) {
+                variables.set(index, variable + ", ");
+            }
+        }
+    }
+
+    private Boolean isNeedCommaSeparator(String variable, String nextVariable) {
+        return (isClassName(variable) || variable.equals(GREATER_THAN)) &&
+                !nextVariable.equals(LESS_THAN) && !nextVariable.equals(GREATER_THAN);
     }
 
     private Boolean isLastEscape(AtomicBoolean isEscape) {
