@@ -13,6 +13,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Stack;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -35,16 +36,34 @@ public class MethodVariableAnalysisImpl implements MethodVariableAnalysis {
     private static final String DOUBLE_QUOTES = "\"";
     private static final String EMPTY_STRING = "";
     private static final String OPEN_PARENTHESES = "(";
+    private static final String OPEN_PARENTHESES_REGEX = "\\" + OPEN_PARENTHESES;
     private static final String CLOSE_PARENTHESES = ")";
-    private static final String UNUSED_CHARACTERS_REGEX = "(?:[,:;!+-])+";
-    private static final String POINT_REGEX = "\\.";
-    private static final String VARIABLE_NAME_REGEX = "^(?:[a-zA-Z_$])(?:[a-zA-Z0-9_$<>\\[\\]])*";
+    private static final String CLOSE_PARENTHESES_REGEX = "\\" + CLOSE_PARENTHESES;
+    private static final String DOUBLE_COLON = "::";
+    private static final String UNUSED_CHARACTERS_REGEX = "(?:[,:;])+";
+    private static final String POINT = ".";
+    private static final String POINT_REGEX = "\\" + POINT;
+    private static final String VARIABLE_NAME_REGEX = "^(?:[a-zA-Z_$])(?:[a-zA-Z0-9_$<>\\[\\].])*";
+    private static final String LESS_THAN = "<";
+    private static final String GREATER_THAN = ">";
     private static final String OPEN_SQUARE_BRACKETS = "[";
     private static final String CLOSE_SQUARE_BRACKETS = "]";
 
     private static final Integer FIRST_INDEX = 0;
     private static final Integer SECOND_INDEX = 1;
     private static final Integer SINGLE_LIST_SIZE = 1;
+    private static final Integer NEXT_CHAR_INDEX_METHOD_REFERENCE = 2;
+
+    private static final List<String> OPERATORS = Arrays.asList(
+            "+", "-", "*", "/", "%",
+            "=",
+            "!", ">", "<",
+            "&", "|", "^", "~"
+    );
+
+    private static final List<String> REGEX_SPECIAL_CHARACTERS = Arrays.asList(
+            "+", "-", "*", ">", "<", "&", "|", "^"
+    );
 
     private static final List<String> KEYWORDS = Arrays.asList(
             "class",
@@ -68,11 +87,9 @@ public class MethodVariableAnalysisImpl implements MethodVariableAnalysis {
     /*
         TODO BUGS ALERT!!!
 
-        TODO instanceof ClassName --> Still read for type (DONE)
-        TODO casting type --> Still read for type (DONE)
         TODO inner class type --> Parent class isn't read
         TODO inner class type --> Read as variable
-        TODO called variable using method --> Read as variable
+        TODO multiple generics --> Failed to read as type
      */
 
     @Override
@@ -82,7 +99,8 @@ public class MethodVariableAnalysisImpl implements MethodVariableAnalysis {
     }
 
     private void readStatement(StatementModel statementModel, MethodModel methodModel) {
-        readVariable(statementModel.getStatement(), methodModel);
+        List<String> variables = readVariable(statementModel.getStatement());
+        saveVariables(variables, methodModel);
 
         if (statementModel instanceof BlockModel) {
             readBlockStatement(statementModel, methodModel);
@@ -94,11 +112,149 @@ public class MethodVariableAnalysisImpl implements MethodVariableAnalysis {
                 .forEach(blockStatementModel -> readStatement(blockStatementModel, methodModel));
     }
 
-    private void readVariable(String statement, MethodModel methodModel) {
+    private List<String> readVariable(String statement) {
         List<String> variables = Arrays.asList(statement.split(WHITESPACE_REGEX));
         variables = new ArrayList<>(variables);
 
-        doReadVariable(variables, methodModel);
+        return doReadVariable(variables);
+    }
+
+    private List<String> doReadVariable(List<String> variables) {
+        variables = variables.stream()
+                .flatMap(this::removeUnusedCharacter)
+                .collect(Collectors.toList());
+
+        normalizeString(variables);
+
+//        System.out.println("doReadVariable --> " + String.join(" -> ", variables));
+
+//        normalizeGenerics(variables);
+
+//        System.out.println("doReadVariable --> " + String.join(" -> ", variables));
+
+        return variables.stream()
+                .filter(this::isNotString)
+                .flatMap(this::splitArrayVariables)
+                .filter(this::isVariable)
+                .collect(Collectors.toList());
+    }
+
+    private Stream<String> removeUnusedCharacter(String variable) {
+        variable = variable.replaceAll(OPEN_PARENTHESES_REGEX, OPEN_PARENTHESES + SPACE_DELIMITER);
+        variable = variable.replaceAll(CLOSE_PARENTHESES_REGEX, SPACE_DELIMITER + CLOSE_PARENTHESES + SPACE_DELIMITER);
+        variable = changeMethodReferenceIntoMethodCall(variable).replace(DOUBLE_COLON, POINT);
+        variable = variable.replaceAll(POINT_REGEX, SPACE_DELIMITER + POINT);
+        variable = variable.replaceAll(UNUSED_CHARACTERS_REGEX, EMPTY_STRING);
+        variable = normalizeOperators(variable);
+
+        return splitMethodParameters(variable);
+    }
+
+    private String changeMethodReferenceIntoMethodCall(String variable) {
+        Integer index = variable.indexOf(DOUBLE_COLON);
+
+        while (index >= FIRST_INDEX) {
+            variable = createMethodCallFromMethodReference(variable, index);
+            index = variable.indexOf(DOUBLE_COLON, ++index);
+        }
+
+        return variable;
+    }
+
+    private String createMethodCallFromMethodReference(String variable, Integer index) {
+        index += NEXT_CHAR_INDEX_METHOD_REFERENCE;
+
+        while (isEndOfMethodReferenceFound(variable, index)) {
+            index++;
+        }
+
+        return variable.substring(FIRST_INDEX, index) + OPEN_PARENTHESES +
+                SPACE_DELIMITER + variable.substring(index);
+    }
+
+    private Boolean isEndOfMethodReferenceFound(String variable, Integer index) {
+        return index < variable.length() || variable.startsWith(SPACE_DELIMITER, index);
+    }
+
+    private String normalizeOperators(String variable) {
+        for (Integer index = FIRST_INDEX; index < OPERATORS.size(); index++) {
+            variable = normalizeOperator(variable, OPERATORS.get(index));
+        }
+
+        return variable;
+    }
+
+    private String normalizeOperator(String variable, String operator) {
+        String delimiter = createDelimiter(operator);
+        return variable.replaceAll(delimiter, SPACE_DELIMITER + operator + SPACE_DELIMITER);
+    }
+
+    private String createDelimiter(String operator) {
+        if (REGEX_SPECIAL_CHARACTERS.contains(operator)) {
+            operator = "\\" + operator;
+        }
+
+        return operator;
+    }
+
+    private Stream<String> splitMethodParameters(String variable) {
+        List<String> split = Arrays.asList(variable.split(WHITESPACE_REGEX));
+        split = createNewListIfSplitEmpty(split, variable);
+
+        removeCastingType(split);
+        removeStaticClass(split);
+
+        return split.stream();
+    }
+
+    private List<String> createNewListIfSplitEmpty(List<String> split, String variable) {
+        if (split.isEmpty()) {
+            split = Collections.singletonList(variable);
+        }
+
+        split = new ArrayList<>(split);
+        split.removeIf(String::isEmpty);
+
+        return split;
+    }
+
+    private void removeCastingType(List<String> split) {
+        List<Integer> removeIndex = new ArrayList<>();
+
+        for (Integer index = FIRST_INDEX; index < (split.size() - SECOND_INDEX); index++) {
+            if (isRemoveIndex(split, index, split.get(index + SECOND_INDEX))) {
+                removeIndex.add(index);
+            }
+        }
+
+        for (Integer index = removeIndex.size() - SECOND_INDEX; index >= FIRST_INDEX; index--) {
+            split.remove(removeIndex.get(index).intValue());
+        }
+    }
+
+    private Boolean isRemoveIndex(List<String> split, Integer index, String nextVariable) {
+        return isContainsKeywordsOrClass(split, index) && nextVariable.equals(CLOSE_PARENTHESES);
+    }
+
+    private void removeStaticClass(List<String> split) {
+        Integer maxSize = split.size() - SECOND_INDEX;
+
+        for (Integer index = FIRST_INDEX; index < maxSize; index++) {
+            String variable = split.get(index);
+            String nextVariable = split.get(index + SECOND_INDEX);
+
+            if (isStaticMethodCalls(variable, nextVariable)) {
+                flagToIgnore(split, index);
+            }
+        }
+    }
+
+    private Boolean isStaticMethodCalls(String variable, String nextVariable) {
+        return isClassName(variable) && nextVariable.contains(POINT);
+    }
+
+    private void flagToIgnore(List<String> split, Integer index) {
+        split.set(index, POINT + split.get(index));
     }
 
     private void normalizeString(List<String> variables) {
@@ -134,6 +290,60 @@ public class MethodVariableAnalysisImpl implements MethodVariableAnalysis {
         return isVariableString(lastIsString, isString.get());
     }
 
+    private void normalizeGenerics(List<String> variables) {
+        List<Integer> mergeIndex = new ArrayList<>();
+        Stack<String> stack = new Stack<>();
+        Boolean isGenericsClass = Boolean.FALSE;
+
+        for (Integer index = FIRST_INDEX; index < variables.size(); index++) {
+            String variable = variables.get(index);
+
+            if (variable.contains(DOUBLE_QUOTES)) {
+                continue;
+            }
+
+            if (isGenericsClass(variable, stack)) {
+                isGenericsClass = Boolean.TRUE;
+                continue;
+            }
+
+            if (variable.equals(LESS_THAN) && isGenericsClass) {
+                if (stack.isEmpty()) {
+                    mergeIndex.add(index - SECOND_INDEX);
+                }
+
+                stack.push(LESS_THAN);
+            }
+
+            if (variable.equals(GREATER_THAN) && isGenericsClass) {
+                if (!stack.isEmpty()) {
+                    stack.pop();
+                }
+
+                if (stack.isEmpty()) {
+                    String nextVariable = variables.get(index + SECOND_INDEX);
+                    Integer savedIndex = index;
+
+                    if (nextVariable.equals(OPEN_PARENTHESES)) {
+                        savedIndex++;
+                    }
+
+                    mergeIndex.add(savedIndex);
+                }
+            }
+        }
+
+        System.out.println("normalizeGenerics --> ");
+        mergeIndex.forEach(System.out::println);
+        System.out.println();
+
+        MergeListHelper.mergeListOfString(variables, mergeIndex, EMPTY_STRING);
+    }
+
+    private Boolean isGenericsClass(String variable, Stack stack) {
+        return isClassName(variable) && stack.isEmpty();
+    }
+
     private Boolean isLastEscape(AtomicBoolean isEscape) {
         Boolean isLastEscape = isEscape.get();
 
@@ -160,76 +370,8 @@ public class MethodVariableAnalysisImpl implements MethodVariableAnalysis {
         return lastIsString != isString;
     }
 
-    private void doReadVariable(List<String> variables, MethodModel methodModel) {
-        AtomicBoolean isClass = new AtomicBoolean();
-
-        variables = variables.stream()
-                .flatMap(this::removeUnusedCharacter)
-                .collect(Collectors.toList());
-
-        normalizeString(variables);
-
-        variables.stream()
-                .filter(this::isNotString)
-                .flatMap(this::splitArrayVariables)
-                .map(this::removeCalledFields)
-                .filter(this::isVariable)
-                .forEach(variable -> saveVariable(variable, isClass, methodModel));
-    }
-
     private Boolean isNotString(String variable) {
         return !variable.contains(DOUBLE_QUOTES);
-    }
-
-    private Stream<String> removeUnusedCharacter(String variable) {
-        variable = variable.replaceAll(UNUSED_CHARACTERS_REGEX, EMPTY_STRING);
-
-        if (variable.contains(OPEN_PARENTHESES)) {
-            variable = variable.replace(OPEN_PARENTHESES, OPEN_PARENTHESES + SPACE_DELIMITER);
-        }
-
-        if (variable.contains(CLOSE_PARENTHESES)) {
-            variable = variable.replace(CLOSE_PARENTHESES, SPACE_DELIMITER + CLOSE_PARENTHESES + SPACE_DELIMITER);
-        }
-
-        return splitMethodParameters(variable);
-    }
-
-    private Stream<String> splitMethodParameters(String variable) {
-        List<String> split = Arrays.asList(variable.split(WHITESPACE_REGEX));
-        split = createNewListIfSplitEmpty(split, variable);
-        removeCastingType(split);
-
-        return split.stream();
-    }
-
-    private void removeCastingType(List<String> split) {
-        List<Integer> removeIndex = new ArrayList<>();
-
-        for (Integer index = FIRST_INDEX; index < (split.size() - SECOND_INDEX); index++) {
-            if (isRemoveIndex(split, index, split.get(index + SECOND_INDEX))) {
-                removeIndex.add(index);
-            }
-        }
-
-        for (Integer index = removeIndex.size() - SECOND_INDEX; index >= FIRST_INDEX; index--) {
-            split.remove(removeIndex.get(index).intValue());
-        }
-    }
-
-    private Boolean isRemoveIndex(List<String> split, Integer index, String nextVariable) {
-        return isContainsKeywordsOrClass(split, index) && nextVariable.equals(CLOSE_PARENTHESES);
-    }
-
-    private List<String> createNewListIfSplitEmpty(List<String> split, String variable) {
-        if (split.isEmpty()) {
-            split = Collections.singletonList(variable);
-        }
-
-        split = new ArrayList<>(split);
-        split.removeIf(String::isEmpty);
-
-        return split;
     }
 
     private Stream<String> splitArrayVariables(String variable) {
@@ -262,39 +404,37 @@ public class MethodVariableAnalysisImpl implements MethodVariableAnalysis {
             split.set(index, removeCloseSquareBrackets(split.get(index)));
         }
 
-        split.remove(FIRST_INDEX.intValue());
+        if (isContainsKeywordsOrClass(split, FIRST_INDEX)) {
+            split.remove(FIRST_INDEX.intValue());
+        }
     }
 
     private String removeCloseSquareBrackets(String variable) {
         return variable.replace(CLOSE_SQUARE_BRACKETS, EMPTY_STRING);
     }
 
-    private String removeCalledFields(String variable) {
-        List<String> split = Arrays.asList(variable.split(POINT_REGEX));
-        split = createNewListIfSplitEmpty(split, variable);
-
-        ifContainsKeywords(split);
-
-        return split.get(FIRST_INDEX)
-                .trim();
-    }
-
-    private void ifContainsKeywords(List<String> split) {
-        if (isContainsKeywordsOrClass(split, FIRST_INDEX)) {
-            split.set(FIRST_INDEX, split.get(SECOND_INDEX));
-        }
-    }
-
     private Boolean isContainsKeywordsOrClass(List<String> split, Integer index) {
         String variable = split.get(index);
 
         return split.size() > SINGLE_LIST_SIZE &&
-                (KEYWORDS.contains(variable) || isClassName(variable));
+                (KEYWORDS.contains(variable) || PRIMITIVE_TYPES.contains(variable) || isClassName(variable));
     }
 
     private Boolean isVariable(String variable) {
-        return variable.matches(VARIABLE_NAME_REGEX) &&
-                !KEYWORDS.contains(variable);
+        return (variable.matches(VARIABLE_NAME_REGEX) && !KEYWORDS.contains(variable)) ||
+                OPERATORS.contains(variable);
+    }
+
+    private void saveVariables(List<String> variables, MethodModel methodModel) {
+        AtomicBoolean isClass = new AtomicBoolean();
+
+        variables.stream()
+                .filter(this::isNotOperators)
+                .forEach(variable -> saveVariable(variable, isClass, methodModel));
+    }
+
+    private Boolean isNotOperators(String variable) {
+        return !OPERATORS.contains(variable);
     }
 
     private void saveVariable(String variable, AtomicBoolean isClass, MethodModel methodModel) {
