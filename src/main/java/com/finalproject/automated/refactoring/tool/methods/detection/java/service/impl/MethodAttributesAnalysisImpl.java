@@ -1,11 +1,11 @@
 package com.finalproject.automated.refactoring.tool.methods.detection.java.service.impl;
 
 import com.finalproject.automated.refactoring.tool.files.detection.model.FileModel;
-import com.finalproject.automated.refactoring.tool.methods.detection.java.helper.MergeListHelper;
 import com.finalproject.automated.refactoring.tool.methods.detection.java.service.MethodAttributesAnalysis;
 import com.finalproject.automated.refactoring.tool.methods.detection.model.IndexModel;
 import com.finalproject.automated.refactoring.tool.model.MethodModel;
 import com.finalproject.automated.refactoring.tool.model.PropertyModel;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -24,6 +24,9 @@ import java.util.stream.Collectors;
 
 @Service
 public class MethodAttributesAnalysisImpl implements MethodAttributesAnalysis {
+
+    @Autowired
+    private MergeListHelper mergeListHelper;
 
     private static final String OPEN_PARENTHESES = "(";
     private static final String CLOSE_PARENTHESES = ")";
@@ -156,7 +159,7 @@ public class MethodAttributesAnalysisImpl implements MethodAttributesAnalysis {
                 fillMergeIndex(word, index, mergeIndex);
         }
 
-        MergeListHelper.mergeListOfString(words, mergeIndex, delimiter);
+        mergeListHelper.mergeListOfString(words, mergeIndex, delimiter);
     }
 
     private Boolean isMergePoint(String word, Stack<String> stack) {
