@@ -92,12 +92,20 @@ public class MethodVariableAnalysisImpl implements MethodVariableAnalysis {
     }
 
     private void saveLocalVariable(String variable, AtomicBoolean isClass, MethodModel methodModel) {
-        int lastIndex = methodModel.getLocalVariables().size() - SINGLE_LIST_SIZE;
         methodModel.getLocalVariables()
-                .get(lastIndex)
-                .setName(variable);
+                .stream()
+                .filter(this::isNoNameLocalVariable)
+                .forEach(propertyModel -> saveLocalVariableName(propertyModel, variable));
 
         isClass.set(Boolean.FALSE);
+    }
+
+    private Boolean isNoNameLocalVariable(PropertyModel propertyModel) {
+        return propertyModel.getName() == null;
+    }
+
+    private void saveLocalVariableName(PropertyModel propertyModel, String variable) {
+        propertyModel.setName(variable);
     }
 
     private void checkVariable(String variable, MethodModel methodModel) {
