@@ -25,7 +25,7 @@ public class MethodVariableAnalysisImpl implements MethodVariableAnalysis {
     @Autowired
     private VariableHelper variableHelper;
 
-    private static final Integer SINGLE_LIST_SIZE = 1;
+    private static final String GLOBAL_VARIABLE_PREFIX = "this.";
 
     @Override
     public void analysis(@NonNull MethodModel methodModel) {
@@ -137,8 +137,10 @@ public class MethodVariableAnalysisImpl implements MethodVariableAnalysis {
     }
 
     private Boolean isGlobalVariable(String variable, MethodModel methodModel) {
-        return methodModel.getGlobalVariables()
-                .contains(variable);
+        String globalVariable = GLOBAL_VARIABLE_PREFIX + variable;
+
+        return methodModel.getGlobalVariables().contains(variable) ||
+                methodModel.getGlobalVariables().contains(globalVariable);
     }
 
     private void saveGlobalVariable(String variable, MethodModel methodModel) {
