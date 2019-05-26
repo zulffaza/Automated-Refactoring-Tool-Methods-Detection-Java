@@ -3,12 +3,24 @@ package com.finalproject.automated.refactoring.tool.methods.detection.java.servi
 import com.finalproject.automated.refactoring.tool.methods.detection.java.service.MethodVariableAnalysis;
 import com.finalproject.automated.refactoring.tool.model.BlockModel;
 import com.finalproject.automated.refactoring.tool.model.MethodModel;
+import com.finalproject.automated.refactoring.tool.model.PropertyModel;
 import com.finalproject.automated.refactoring.tool.model.StatementModel;
+import com.finalproject.automated.refactoring.tool.utils.service.VariableHelper;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.junit4.SpringRunner;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
+
+import static org.junit.Assert.assertEquals;
+import static org.mockito.Mockito.*;
 
 /**
  * @author fazazulfikapp
@@ -16,38 +28,111 @@ import java.util.List;
  * @since 14 May 2019
  */
 
+@RunWith(SpringRunner.class)
+@SpringBootTest
 public class MethodVariableAnalysisImplTest {
 
+    @Autowired
     private MethodVariableAnalysis methodVariableAnalysis;
+
+    @MockBean
+    private VariableHelper variableHelper;
+
+    private static final String FIRST_STATEMENT = "try {";
+    private static final String FIRST_BLOCK_STATEMENT = "return user + \"-\" + name + extension;";
+    private static final String FIRST_BLOCK_END_STATEMENT = "}";
+    private static final String SECOND_STATEMENT = "catch (NullPointerException e) {";
+    private static final String SECOND_BLOCK_STATEMENT = "return null;";
+    private static final String SECOND_BLOCK_END_STATEMENT = "}";
+    private static final String FIRST_READ_VARIABLE = "user";
+    private static final String SECOND_READ_VARIABLE = "name";
+    private static final String THIRD_READ_VARIABLE = "extension";
+    private static final String FOURTH_READ_VARIABLE = "NullPointerException";
+    private static final String FIFTH_READ_VARIABLE = "e";
 
     private MethodModel methodModel;
 
     @Before
     public void setUp() {
-        methodVariableAnalysis = new MethodVariableAnalysisImpl();
         methodModel = MethodModel.builder()
+                .parameters(Collections.singletonList(PropertyModel.builder()
+                        .type("User")
+                        .name("user")
+                        .build()))
                 .statements(createExpectedStatements())
                 .build();
+
+        mockingReadVariable();
+        mockingIsClassName();
     }
 
     @Test
-    public void analysis() {
+    public void analysis_success() {
         methodVariableAnalysis.analysis(methodModel);
 
-        System.out.println("Global variables : ");
+        assertEquals(createExpectedGlobalVariables(), methodModel.getGlobalVariables());
+        assertEquals(createExpectedLocalVariables(), methodModel.getLocalVariables());
 
-        methodModel.getGlobalVariables()
-                .forEach(System.out::println);
+        verifyReadVariable();
+        verifyIsClassName();
 
-        System.out.println();
-        System.out.println("Local variables : ");
+        verifyNoMoreInteractions(variableHelper);
+    }
 
-        methodModel.getLocalVariables()
-                .forEach(propertyModel -> {
-                    System.out.println("Type --> " + propertyModel.getType());
-                    System.out.println("Name --> " + propertyModel.getName());
-                    System.out.println();
-                });
+    @Test
+    public void analysis_success_emptyStatements() {
+        methodModel.setParameters(Collections.emptyList());
+        methodModel.setStatements(Collections.emptyList());
+
+        methodVariableAnalysis.analysis(methodModel);
+
+        assertEquals(new ArrayList<>(), methodModel.getGlobalVariables());
+        assertEquals(new ArrayList<>(), methodModel.getLocalVariables());
+
+        verifyNoMoreInteractions(variableHelper);
+    }
+
+    @Test(expected = NullPointerException.class)
+    public void analysis_failed_statementsIsNull() {
+        methodModel.setParameters(Collections.emptyList());
+        methodModel.setStatements(null);
+
+        methodVariableAnalysis.analysis(null);
+    }
+
+    @Test(expected = NullPointerException.class)
+    public void analysis_failed_methodModelIsNull() {
+        methodVariableAnalysis.analysis(null);
+    }
+
+    private void mockingReadVariable() {
+        when(variableHelper.readVariable(FIRST_BLOCK_STATEMENT))
+                .thenReturn(createFirstBlockStatementVariables());
+        when(variableHelper.readVariable(SECOND_STATEMENT))
+                .thenReturn(createSecondStatementVariables());
+
+        mockingReadVariableReturnEmpty(FIRST_STATEMENT);
+        mockingReadVariableReturnEmpty(SECOND_BLOCK_STATEMENT);
+    }
+
+    private void mockingReadVariableReturnEmpty(String statement) {
+        when(variableHelper.readVariable(statement))
+                .thenReturn(new ArrayList<>());
+    }
+
+    private void mockingIsClassName() {
+        when(variableHelper.isClassName(FOURTH_READ_VARIABLE))
+                .thenReturn(Boolean.TRUE);
+
+        mockingIsClassNameReturnFalse(FIRST_READ_VARIABLE);
+        mockingIsClassNameReturnFalse(SECOND_READ_VARIABLE);
+        mockingIsClassNameReturnFalse(THIRD_READ_VARIABLE);
+        mockingIsClassNameReturnFalse(FIFTH_READ_VARIABLE);
+    }
+
+    private void mockingIsClassNameReturnFalse(String variable) {
+        when(variableHelper.isClassName(variable))
+                .thenReturn(Boolean.FALSE);
     }
 
     private List<StatementModel> createExpectedStatements() {
@@ -62,7 +147,7 @@ public class MethodVariableAnalysisImplTest {
     private StatementModel createFirstStatement() {
         BlockModel blockModel = BlockModel.blockBuilder()
                 .build();
-        blockModel.setStatement("try {");
+        blockModel.setStatement(FIRST_STATEMENT);
         blockModel.setStartIndex(0);
         blockModel.setEndIndex(4);
         blockModel.getStatements()
@@ -74,7 +159,7 @@ public class MethodVariableAnalysisImplTest {
 
     private StatementModel createFirstBlockStatement() {
         return StatementModel.statementBuilder()
-                .statement("return user + \"-\" + name + extension;")
+                .statement(FIRST_BLOCK_STATEMENT)
                 .startIndex(18)
                 .endIndex(54)
                 .build();
@@ -82,7 +167,7 @@ public class MethodVariableAnalysisImplTest {
 
     private StatementModel createFirstBlockEndStatement() {
         return StatementModel.statementBuilder()
-                .statement("}")
+                .statement(FIRST_BLOCK_END_STATEMENT)
                 .startIndex(64)
                 .endIndex(64)
                 .build();
@@ -91,7 +176,7 @@ public class MethodVariableAnalysisImplTest {
     private StatementModel createSecondStatement() {
         BlockModel blockModel = BlockModel.blockBuilder()
                 .build();
-        blockModel.setStatement("catch (NullPointerException e) {");
+        blockModel.setStatement(SECOND_STATEMENT);
         blockModel.setStartIndex(66);
         blockModel.setEndIndex(97);
         blockModel.getStatements()
@@ -103,7 +188,7 @@ public class MethodVariableAnalysisImplTest {
 
     private StatementModel createSecondBlockStatement() {
         return StatementModel.statementBuilder()
-                .statement("return null;")
+                .statement(SECOND_BLOCK_STATEMENT)
                 .startIndex(111)
                 .endIndex(122)
                 .build();
@@ -111,9 +196,62 @@ public class MethodVariableAnalysisImplTest {
 
     private StatementModel createSecondBlockEndStatement() {
         return StatementModel.statementBuilder()
-                .statement("}")
+                .statement(SECOND_BLOCK_END_STATEMENT)
                 .startIndex(132)
                 .endIndex(132)
                 .build();
+    }
+
+    private List<String> createFirstBlockStatementVariables() {
+        List<String> firstBlockStatementVariables = Arrays.asList(
+                "user", "+", "+", "name", "+", "extension"
+        );
+        return new ArrayList<>(firstBlockStatementVariables);
+    }
+
+    private List<String> createSecondStatementVariables() {
+        List<String> secondStatementVariables = Arrays.asList(
+                "NullPointerException", "e"
+        );
+        return new ArrayList<>(secondStatementVariables);
+    }
+
+    private List<String> createExpectedGlobalVariables() {
+        List<String> expectedGlobalVariables = Arrays.asList(
+                SECOND_READ_VARIABLE, THIRD_READ_VARIABLE
+        );
+        return new ArrayList<>(expectedGlobalVariables);
+    }
+
+    private List<PropertyModel> createExpectedLocalVariables() {
+        List<PropertyModel> expectedLocalVariables = Collections.singletonList(
+                PropertyModel.builder()
+                        .type(FOURTH_READ_VARIABLE)
+                        .name(FIFTH_READ_VARIABLE)
+                        .build());
+        return new ArrayList<>(expectedLocalVariables);
+    }
+
+    private void verifyReadVariable() {
+        verifyReadVariableOneTimes(FIRST_STATEMENT);
+        verifyReadVariableOneTimes(FIRST_BLOCK_STATEMENT);
+        verifyReadVariableOneTimes(SECOND_STATEMENT);
+        verifyReadVariableOneTimes(SECOND_BLOCK_STATEMENT);
+    }
+
+    private void verifyReadVariableOneTimes(String statement) {
+        verify(variableHelper).readVariable(statement);
+    }
+
+    private void verifyIsClassName() {
+        verifyIsClassNameOneTimes(FIRST_READ_VARIABLE);
+        verifyIsClassNameOneTimes(SECOND_READ_VARIABLE);
+        verifyIsClassNameOneTimes(THIRD_READ_VARIABLE);
+        verifyIsClassNameOneTimes(FOURTH_READ_VARIABLE);
+        verifyIsClassNameOneTimes(FIFTH_READ_VARIABLE);
+    }
+
+    private void verifyIsClassNameOneTimes(String variable) {
+        verify(variableHelper).isClassName(variable);
     }
 }

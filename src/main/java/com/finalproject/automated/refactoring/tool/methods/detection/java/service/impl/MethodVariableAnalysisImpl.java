@@ -5,6 +5,7 @@ import com.finalproject.automated.refactoring.tool.model.BlockModel;
 import com.finalproject.automated.refactoring.tool.model.MethodModel;
 import com.finalproject.automated.refactoring.tool.model.PropertyModel;
 import com.finalproject.automated.refactoring.tool.model.StatementModel;
+import com.finalproject.automated.refactoring.tool.utils.service.VariableHelper;
 import lombok.NonNull;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;

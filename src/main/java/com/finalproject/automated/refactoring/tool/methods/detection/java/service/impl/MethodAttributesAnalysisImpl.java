@@ -5,6 +5,7 @@ import com.finalproject.automated.refactoring.tool.methods.detection.java.servic
 import com.finalproject.automated.refactoring.tool.methods.detection.model.IndexModel;
 import com.finalproject.automated.refactoring.tool.model.MethodModel;
 import com.finalproject.automated.refactoring.tool.model.PropertyModel;
+import com.finalproject.automated.refactoring.tool.utils.service.MergeListHelper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 

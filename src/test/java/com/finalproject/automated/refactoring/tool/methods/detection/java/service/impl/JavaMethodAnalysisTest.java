@@ -133,7 +133,7 @@ public class JavaMethodAnalysisTest {
                 .when(methodStatementAnalysis)
                 .analysis(any(MethodModel.class));
 
-        doAnswer(this::stubMethodVariableAnalysisIndexModel)
+        doNothing()
                 .when(methodVariableAnalysis)
                 .analysis(any(MethodModel.class));
 
@@ -161,6 +161,7 @@ public class JavaMethodAnalysisTest {
         verifyMethodAttributesAnalysisIndexModel();
         verifyMethodBodyAnalysisIndexModel();
         verifyMethodStatementAnalysis();
+        verifyMethodVariableAnalysis();
         verifyMethodsDetectionUtil();
     }
 
@@ -186,6 +187,7 @@ public class JavaMethodAnalysisTest {
         verifyMethodAttributesAnalysisIndexModel();
         verifyMethodBodyAnalysisIndexModel();
         verifyMethodStatementAnalysis();
+        verifyMethodVariableAnalysis();
         verifyMethodsDetectionUtil();
     }
 
@@ -210,6 +212,7 @@ public class JavaMethodAnalysisTest {
         verifyMethodAttributesAnalysisNonConstructorIndexModel();
         verifyMethodBodyAnalysisNonConstructorIndexModel();
         verifyMethodStatementAnalysis();
+        verifyMethodVariableAnalysis();
         verifyMethodsDetectionUtil();
     }
 
@@ -354,14 +357,6 @@ public class JavaMethodAnalysisTest {
         return null;
     }
 
-    private Answer stubMethodVariableAnalysisIndexModel(InvocationOnMock invocationOnMock) {
-        MethodModel methodModel = invocationOnMock.getArgument(FIRST_INDEX);
-
-        // TODO create mock variable
-
-        return null;
-    }
-
     private void analysisSuccessCheckResult(Map<String, List<MethodModel>> result) {
         assertEquals(ONE.intValue(), result.size());
         assertTrue(result.containsKey(key));
@@ -419,6 +414,8 @@ public class JavaMethodAnalysisTest {
     }
 
     private void analysisSuccessCheckResultAnother(Map<String, List<MethodModel>> result) {
+        assertEquals(new ArrayList<>(), result.get(key).get(FIRST_INDEX).getGlobalVariables());
+        assertEquals(new ArrayList<>(), result.get(key).get(FIRST_INDEX).getLocalVariables());
         assertNotNull(result.get(key).get(FIRST_INDEX).getBody());
         assertNull(result.get(key).get(FIRST_INDEX).getLoc());
     }
@@ -480,6 +477,8 @@ public class JavaMethodAnalysisTest {
     }
 
     private void analysisSuccessResultIsNotEmptyCheckResultAnother(Map<String, List<MethodModel>> result) {
+        assertEquals(new ArrayList<>(), result.get(key).get(SECOND_INDEX).getGlobalVariables());
+        assertEquals(new ArrayList<>(), result.get(key).get(SECOND_INDEX).getLocalVariables());
         assertNotNull(result.get(key).get(SECOND_INDEX).getBody());
         assertNull(result.get(key).get(SECOND_INDEX).getLoc());
     }
@@ -529,6 +528,8 @@ public class JavaMethodAnalysisTest {
     }
 
     private void analysisSuccessNonConstructorMethodsCheckResultAnother(Map<String, List<MethodModel>> result) {
+        assertEquals(new ArrayList<>(), result.get(key).get(FIRST_INDEX).getGlobalVariables());
+        assertEquals(new ArrayList<>(), result.get(key).get(FIRST_INDEX).getLocalVariables());
         assertNotNull(result.get(key).get(FIRST_INDEX).getBody());
         assertNull(result.get(key).get(FIRST_INDEX).getLoc());
     }

@@ -6,6 +6,10 @@ import com.finalproject.automated.refactoring.tool.model.MethodModel;
 import com.finalproject.automated.refactoring.tool.model.StatementModel;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.junit4.SpringRunner;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -18,15 +22,17 @@ import static org.junit.Assert.assertEquals;
  * @since 18 April 2019
  */
 
+@RunWith(SpringRunner.class)
+@SpringBootTest
 public class MethodStatementAnalysisImplTest {
 
+    @Autowired
     private MethodStatementAnalysis methodStatementAnalysis;
 
     private MethodModel methodModel;
 
     @Before
     public void setUp() {
-        methodStatementAnalysis = new MethodStatementAnalysisImpl();
         methodModel = MethodModel.builder()
                 .body(createMethodBody())
                 .build();
