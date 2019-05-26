@@ -1,5 +1,6 @@
 package com.finalproject.automated.refactoring.tool.methods.detection.java.service.impl;
 
+import com.finalproject.automated.refactoring.tool.methods.detection.java.service.StartIndexAnalysis;
 import com.finalproject.automated.refactoring.tool.methods.detection.model.IndexModel;
 import org.junit.Before;
 import org.junit.Test;
@@ -14,7 +15,7 @@ import static org.junit.Assert.assertEquals;
 
 public class StartIndexAnalysisImplTest {
 
-    private StartIndexAnalysisImpl startIndexAnalysis;
+    private StartIndexAnalysis startIndexAnalysis;
 
     private String content;
 

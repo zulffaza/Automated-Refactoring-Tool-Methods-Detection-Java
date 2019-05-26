@@ -4,6 +4,7 @@ import com.finalproject.automated.refactoring.tool.files.detection.model.FileMod
 import com.finalproject.automated.refactoring.tool.methods.detection.java.service.MethodAttributesAnalysis;
 import com.finalproject.automated.refactoring.tool.methods.detection.java.service.MethodBodyAnalysis;
 import com.finalproject.automated.refactoring.tool.methods.detection.java.service.MethodStatementAnalysis;
+import com.finalproject.automated.refactoring.tool.methods.detection.java.service.MethodVariableAnalysis;
 import com.finalproject.automated.refactoring.tool.methods.detection.java.service.StartIndexAnalysis;
 import com.finalproject.automated.refactoring.tool.methods.detection.model.IndexModel;
 import com.finalproject.automated.refactoring.tool.methods.detection.service.MethodAnalysis;
@@ -37,6 +38,9 @@ public class JavaMethodAnalysis implements MethodAnalysis {
     private MethodStatementAnalysis methodStatementAnalysis;
 
     @Autowired
+    private MethodVariableAnalysis methodVariableAnalysis;
+
+    @Autowired
     private MethodsDetectionUtil methodsDetectionUtil;
 
     @Override
@@ -48,6 +52,7 @@ public class JavaMethodAnalysis implements MethodAnalysis {
             methodAttributesAnalysis.analysis(fileModel, indexModel, methodModel);
             methodBodyAnalysis.analysis(fileModel.getContent(), indexModel, methodModel);
             methodStatementAnalysis.analysis(methodModel);
+            methodVariableAnalysis.analysis(methodModel);
             saveResult(fileModel, methodModel, result);
         } catch (Exception e) {
             // Do nothing

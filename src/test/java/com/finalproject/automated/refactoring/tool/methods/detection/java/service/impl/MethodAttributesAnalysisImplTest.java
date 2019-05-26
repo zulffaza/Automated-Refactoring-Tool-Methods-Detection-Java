@@ -1,15 +1,27 @@
 package com.finalproject.automated.refactoring.tool.methods.detection.java.service.impl;
 
 import com.finalproject.automated.refactoring.tool.files.detection.model.FileModel;
+import com.finalproject.automated.refactoring.tool.methods.detection.java.service.MethodAttributesAnalysis;
 import com.finalproject.automated.refactoring.tool.methods.detection.model.IndexModel;
 import com.finalproject.automated.refactoring.tool.model.MethodModel;
 import com.finalproject.automated.refactoring.tool.model.PropertyModel;
+import com.finalproject.automated.refactoring.tool.utils.service.MergeListHelper;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.junit4.SpringRunner;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 
 import static org.junit.Assert.assertEquals;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.*;
 
 /**
  * @author fazazulfikapp
@@ -17,9 +29,15 @@ import static org.junit.Assert.assertEquals;
  * @since 12 December 2018
  */
 
+@RunWith(SpringRunner.class)
+@SpringBootTest
 public class MethodAttributesAnalysisImplTest {
 
-    private MethodAttributesAnalysisImpl methodAttributesAnalysis;
+    @Autowired
+    private MethodAttributesAnalysis methodAttributesAnalysis;
+
+    @MockBean
+    private MergeListHelper mergeListHelper;
 
     private FileModel fileModel;
 
@@ -31,7 +49,6 @@ public class MethodAttributesAnalysisImplTest {
 
     @Before
     public void setUp() {
-        methodAttributesAnalysis = new MethodAttributesAnalysisImpl();
         fileModel = getFileModel();
         indexModel = IndexModel.builder()
                 .start(234)
@@ -45,6 +62,9 @@ public class MethodAttributesAnalysisImplTest {
                 .start(567)
                 .end(657)
                 .build();
+
+        mockingMergeListOfStringConstructorMethod();
+        mockingMergeListOfStringNonConstructorMethod();
     }
 
     @Test
@@ -55,6 +75,8 @@ public class MethodAttributesAnalysisImplTest {
         methodAttributesAnalysis.analysis(fileModel, indexModel, methodModel);
 
         assertEquals(expectedMethodModel, methodModel);
+
+        verifyMergeListOfStringConstructorMethod();
     }
 
     @Test
@@ -65,6 +87,8 @@ public class MethodAttributesAnalysisImplTest {
         methodAttributesAnalysis.analysis(fileModel, nonConstructorIndexModel, methodModel);
 
         assertEquals(expectedMethodModel, methodModel);
+
+        verifyMergeListOfStringNonConstructorMethod();
     }
 
     @Test(expected = IllegalArgumentException.class)
@@ -133,9 +157,9 @@ public class MethodAttributesAnalysisImplTest {
                 "    }\n" +
                 "\n" +
                 "    @Bean\n" +
-                "    (\n"+
-                "        name = \"FileExtension\"\n"+
-                "    )\n"+
+                "    (\n" +
+                "        name = \"FileExtension\"\n" +
+                "    )\n" +
                 "    public String @getExtension() {\n" +
                 "        return extension;\n" +
                 "    }\n" +
@@ -144,6 +168,54 @@ public class MethodAttributesAnalysisImplTest {
                 "        this.extension = extension;\n" +
                 "    }\n" +
                 "}";
+    }
+
+    private void mockingMergeListOfStringConstructorMethod() {
+        doNothing()
+                .when(mergeListHelper)
+                .mergeListOfString(
+                        eq(Arrays.asList("@SuppressWarnings()", "public", "Filename")),
+                        eq(new ArrayList<>()),
+                        eq(" "));
+        doNothing()
+                .when(mergeListHelper)
+                .mergeListOfString(
+                        eq(Arrays.asList("@NonNull String name", "@NonNull String extension")),
+                        eq(new ArrayList<>()),
+                        eq(", "));
+        doNothing()
+                .when(mergeListHelper)
+                .mergeListOfString(
+                        eq(Arrays.asList("@NonNull", "String", "name")),
+                        eq(new ArrayList<>()),
+                        eq(" "));
+        doNothing()
+                .when(mergeListHelper)
+                .mergeListOfString(
+                        eq(Arrays.asList("@NonNull", "public", "extension")),
+                        eq(new ArrayList<>()),
+                        eq(" "));
+    }
+
+    private void mockingMergeListOfStringNonConstructorMethod() {
+        doNothing()
+                .when(mergeListHelper)
+                .mergeListOfString(
+                        eq(Arrays.asList("public", "void", "setName")),
+                        eq(new ArrayList<>()),
+                        eq(" "));
+        doNothing()
+                .when(mergeListHelper)
+                .mergeListOfString(
+                        eq(Collections.singletonList("@NonNull String name")),
+                        eq(new ArrayList<>()),
+                        eq(", "));
+        doNothing()
+                .when(mergeListHelper)
+                .mergeListOfString(
+                        eq(Arrays.asList("@NonNull", "String", "name")),
+                        eq(new ArrayList<>()),
+                        eq(" "));
     }
 
     private MethodModel getConstructorExpectedMethodModel() {
@@ -179,5 +251,45 @@ public class MethodAttributesAnalysisImplTest {
                                 .build()
                 ))
                 .build();
+    }
+
+    private void verifyMergeListOfStringConstructorMethod() {
+        verifyMergeListOfStringOneTime(
+                Arrays.asList("@SuppressWarnings()", "public", "Filename"),
+                new ArrayList<>(),
+                " ");
+        verifyMergeListOfStringOneTime(
+                Arrays.asList("@NonNull String name", "@NonNull String extension"),
+                new ArrayList<>(),
+                ", ");
+        verify(mergeListHelper, times(2))
+                .mergeListOfString(Collections.singletonList("@NonNull"),
+                        new ArrayList<>(), " ");
+
+        verifyNoMoreInteractions(mergeListHelper);
+    }
+
+    private void verifyMergeListOfStringNonConstructorMethod() {
+        verifyMergeListOfStringOneTime(
+                Arrays.asList("public", "void", "setName"),
+                new ArrayList<>(),
+                " ");
+        verifyMergeListOfStringOneTime(
+                Collections.singletonList("@NonNull String name"),
+                new ArrayList<>(),
+                ", ");
+        verifyMergeListOfStringOneTime(
+                Collections.singletonList("@NonNull"),
+                new ArrayList<>(),
+                " ");
+
+        verifyNoMoreInteractions(mergeListHelper);
+    }
+
+    private void verifyMergeListOfStringOneTime(List<String> listOfString,
+                                                List<Integer> mergeIndex,
+                                                String delimiter) {
+        verify(mergeListHelper)
+                .mergeListOfString(listOfString, mergeIndex, delimiter);
     }
 }

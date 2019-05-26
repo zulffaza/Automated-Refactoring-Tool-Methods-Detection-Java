@@ -4,6 +4,7 @@ import com.finalproject.automated.refactoring.tool.files.detection.model.FileMod
 import com.finalproject.automated.refactoring.tool.methods.detection.service.MethodsDetection;
 import com.finalproject.automated.refactoring.tool.model.BlockModel;
 import com.finalproject.automated.refactoring.tool.model.MethodModel;
+import com.finalproject.automated.refactoring.tool.model.PropertyModel;
 import com.finalproject.automated.refactoring.tool.model.StatementModel;
 import org.junit.Before;
 import org.junit.Test;
@@ -145,6 +146,14 @@ public class ApplicationTest {
                 "}";
     }
 
+    private List<PropertyModel> createExpectedLocalVariables() {
+        return Collections.singletonList(
+                PropertyModel.builder()
+                        .type("NullPointerException")
+                        .name("e")
+                        .build());
+    }
+
     private List<StatementModel> createExpectedStatements() {
         List<StatementModel> statements = new ArrayList<>();
 
@@ -282,6 +291,8 @@ public class ApplicationTest {
     }
 
     private void assertMethodAnother(List<MethodModel> methodModels) {
+        assertEquals(new ArrayList<>(), methodModels.get(FIRST_INDEX).getGlobalVariables());
+        assertEquals(createExpectedLocalVariables(), methodModels.get(FIRST_INDEX).getLocalVariables());
         assertNotNull(methodModels.get(FIRST_INDEX).getBody());
         assertEquals(createExpectedStatements(), methodModels.get(FIRST_INDEX).getStatements());
         assertNull(methodModels.get(FIRST_INDEX).getLoc());

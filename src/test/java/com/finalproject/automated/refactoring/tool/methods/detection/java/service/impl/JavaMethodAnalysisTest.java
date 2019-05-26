@@ -4,6 +4,7 @@ import com.finalproject.automated.refactoring.tool.files.detection.model.FileMod
 import com.finalproject.automated.refactoring.tool.methods.detection.java.service.MethodAttributesAnalysis;
 import com.finalproject.automated.refactoring.tool.methods.detection.java.service.MethodBodyAnalysis;
 import com.finalproject.automated.refactoring.tool.methods.detection.java.service.MethodStatementAnalysis;
+import com.finalproject.automated.refactoring.tool.methods.detection.java.service.MethodVariableAnalysis;
 import com.finalproject.automated.refactoring.tool.methods.detection.java.service.StartIndexAnalysis;
 import com.finalproject.automated.refactoring.tool.methods.detection.model.IndexModel;
 import com.finalproject.automated.refactoring.tool.methods.detection.service.util.MethodsDetectionUtil;
@@ -57,6 +58,9 @@ public class JavaMethodAnalysisTest {
 
     @MockBean
     private MethodStatementAnalysis methodStatementAnalysis;
+
+    @MockBean
+    private MethodVariableAnalysis methodVariableAnalysis;
 
     @MockBean
     private MethodsDetectionUtil methodsDetectionUtil;
@@ -129,6 +133,10 @@ public class JavaMethodAnalysisTest {
                 .when(methodStatementAnalysis)
                 .analysis(any(MethodModel.class));
 
+        doNothing()
+                .when(methodVariableAnalysis)
+                .analysis(any(MethodModel.class));
+
         when(methodsDetectionUtil.getMethodKey(fileModel))
                 .thenReturn(key);
     }
@@ -153,6 +161,7 @@ public class JavaMethodAnalysisTest {
         verifyMethodAttributesAnalysisIndexModel();
         verifyMethodBodyAnalysisIndexModel();
         verifyMethodStatementAnalysis();
+        verifyMethodVariableAnalysis();
         verifyMethodsDetectionUtil();
     }
 
@@ -178,6 +187,7 @@ public class JavaMethodAnalysisTest {
         verifyMethodAttributesAnalysisIndexModel();
         verifyMethodBodyAnalysisIndexModel();
         verifyMethodStatementAnalysis();
+        verifyMethodVariableAnalysis();
         verifyMethodsDetectionUtil();
     }
 
@@ -202,6 +212,7 @@ public class JavaMethodAnalysisTest {
         verifyMethodAttributesAnalysisNonConstructorIndexModel();
         verifyMethodBodyAnalysisNonConstructorIndexModel();
         verifyMethodStatementAnalysis();
+        verifyMethodVariableAnalysis();
         verifyMethodsDetectionUtil();
     }
 
@@ -403,6 +414,8 @@ public class JavaMethodAnalysisTest {
     }
 
     private void analysisSuccessCheckResultAnother(Map<String, List<MethodModel>> result) {
+        assertEquals(new ArrayList<>(), result.get(key).get(FIRST_INDEX).getGlobalVariables());
+        assertEquals(new ArrayList<>(), result.get(key).get(FIRST_INDEX).getLocalVariables());
         assertNotNull(result.get(key).get(FIRST_INDEX).getBody());
         assertNull(result.get(key).get(FIRST_INDEX).getLoc());
     }
@@ -464,6 +477,8 @@ public class JavaMethodAnalysisTest {
     }
 
     private void analysisSuccessResultIsNotEmptyCheckResultAnother(Map<String, List<MethodModel>> result) {
+        assertEquals(new ArrayList<>(), result.get(key).get(SECOND_INDEX).getGlobalVariables());
+        assertEquals(new ArrayList<>(), result.get(key).get(SECOND_INDEX).getLocalVariables());
         assertNotNull(result.get(key).get(SECOND_INDEX).getBody());
         assertNull(result.get(key).get(SECOND_INDEX).getLoc());
     }
@@ -513,6 +528,8 @@ public class JavaMethodAnalysisTest {
     }
 
     private void analysisSuccessNonConstructorMethodsCheckResultAnother(Map<String, List<MethodModel>> result) {
+        assertEquals(new ArrayList<>(), result.get(key).get(FIRST_INDEX).getGlobalVariables());
+        assertEquals(new ArrayList<>(), result.get(key).get(FIRST_INDEX).getLocalVariables());
         assertNotNull(result.get(key).get(FIRST_INDEX).getBody());
         assertNull(result.get(key).get(FIRST_INDEX).getLoc());
     }
@@ -563,6 +580,12 @@ public class JavaMethodAnalysisTest {
         verify(methodStatementAnalysis, times(INVOKED_ONCE))
                 .analysis(any(MethodModel.class));
         verifyNoMoreInteractions(methodStatementAnalysis);
+    }
+
+    private void verifyMethodVariableAnalysis() {
+        verify(methodVariableAnalysis, times(INVOKED_ONCE))
+                .analysis(any(MethodModel.class));
+        verifyNoMoreInteractions(methodVariableAnalysis);
     }
 
     private void verifyMethodsDetectionUtil() {
