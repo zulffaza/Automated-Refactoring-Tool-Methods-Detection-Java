@@ -43,6 +43,7 @@ public class MethodStatementAnalysisImpl implements MethodStatementAnalysis {
     private SaveStatementVA createSaveStatementVA(MethodModel methodModel) {
         SaveStatementVA saveStatementVA = SaveStatementVA.builder()
                 .body(methodModel.getBody())
+                .index(0)
                 .startStatementIndex(0)
                 .endStatementIndex(0)
                 .build();
@@ -68,11 +69,13 @@ public class MethodStatementAnalysisImpl implements MethodStatementAnalysis {
     private void saveStatement(Character character, SaveStatementVA saveStatementVA) {
         String statement = createStatement(saveStatementVA);
         StatementModel statementModel = createStatementModel(character, statement, saveStatementVA);
+        statementModel.setIndex(saveStatementVA.getIndex());
 
         saveStatementVA.getStatements()
                 .peek()
                 .add(statementModel);
 
+        saveStatementVA.setIndex(saveStatementVA.getIndex() + ONE);
         saveNewBlock(statementModel, saveStatementVA);
     }
 
@@ -124,7 +127,8 @@ public class MethodStatementAnalysisImpl implements MethodStatementAnalysis {
         return blockModel;
     }
 
-    private void addIndexToStatementModel(StatementModel statementModel, SaveStatementVA saveStatementVA) {
+    private void addIndexToStatementModel(StatementModel statementModel,
+                                          SaveStatementVA saveStatementVA) {
         if (statementModel != null) {
             statementModel.setStartIndex(saveStatementVA.getStartStatementIndex());
             statementModel.setEndIndex(saveStatementVA.getEndStatementIndex());

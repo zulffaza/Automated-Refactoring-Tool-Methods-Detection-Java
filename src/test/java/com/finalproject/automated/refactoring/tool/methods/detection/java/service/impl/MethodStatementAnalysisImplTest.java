@@ -84,6 +84,7 @@ public class MethodStatementAnalysisImplTest {
         BlockModel blockModel = BlockModel.blockBuilder()
                 .build();
         blockModel.setStatement("try {");
+        blockModel.setIndex(0);
         blockModel.setStartIndex(0);
         blockModel.setEndIndex(4);
         blockModel.getStatements()
@@ -96,6 +97,7 @@ public class MethodStatementAnalysisImplTest {
     private StatementModel createFirstBlockStatement() {
         return StatementModel.statementBuilder()
                 .statement("return user + \"-\" + name + extension;")
+                .index(1)
                 .startIndex(18)
                 .endIndex(54)
                 .build();
@@ -113,6 +115,7 @@ public class MethodStatementAnalysisImplTest {
         BlockModel blockModel = BlockModel.blockBuilder()
                 .build();
         blockModel.setStatement("catch (NullPointerException e) {");
+        blockModel.setIndex(2);
         blockModel.setStartIndex(66);
         blockModel.setEndIndex(97);
         blockModel.getStatements()
@@ -125,6 +128,7 @@ public class MethodStatementAnalysisImplTest {
     private StatementModel createSecondBlockStatement() {
         return StatementModel.statementBuilder()
                 .statement("return null;")
+                .index(3)
                 .startIndex(111)
                 .endIndex(122)
                 .build();

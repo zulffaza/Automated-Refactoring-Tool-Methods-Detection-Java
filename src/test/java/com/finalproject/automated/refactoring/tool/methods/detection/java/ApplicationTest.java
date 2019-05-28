@@ -6,6 +6,7 @@ import com.finalproject.automated.refactoring.tool.model.BlockModel;
 import com.finalproject.automated.refactoring.tool.model.MethodModel;
 import com.finalproject.automated.refactoring.tool.model.PropertyModel;
 import com.finalproject.automated.refactoring.tool.model.StatementModel;
+import com.finalproject.automated.refactoring.tool.model.VariablePropertyModel;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -146,12 +147,15 @@ public class ApplicationTest {
                 "}";
     }
 
-    private List<PropertyModel> createExpectedLocalVariables() {
-        return Collections.singletonList(
-                PropertyModel.builder()
-                        .type("NullPointerException")
-                        .name("e")
-                        .build());
+    private List<VariablePropertyModel> createExpectedLocalVariables() {
+        VariablePropertyModel variablePropertyModel = VariablePropertyModel.variablePropertyBuilder()
+                .statementIndex(2)
+                .build();
+
+        variablePropertyModel.setType("NullPointerException");
+        variablePropertyModel.setName("e");
+
+        return Collections.singletonList(variablePropertyModel);
     }
 
     private List<StatementModel> createExpectedStatements() {
@@ -167,6 +171,7 @@ public class ApplicationTest {
         BlockModel blockModel = BlockModel.blockBuilder()
                 .build();
         blockModel.setStatement("try {");
+        blockModel.setIndex(0);
         blockModel.setStartIndex(9);
         blockModel.setEndIndex(13);
         blockModel.getStatements()
@@ -179,6 +184,7 @@ public class ApplicationTest {
     private StatementModel createFirstBlockStatement() {
         return StatementModel.statementBuilder()
                 .statement("return user + \"-\" + name + extension;")
+                .index(1)
                 .startIndex(27)
                 .endIndex(63)
                 .build();
@@ -196,6 +202,7 @@ public class ApplicationTest {
         BlockModel blockModel = BlockModel.blockBuilder()
                 .build();
         blockModel.setStatement("catch (NullPointerException e) {");
+        blockModel.setIndex(2);
         blockModel.setStartIndex(75);
         blockModel.setEndIndex(106);
         blockModel.getStatements()
@@ -208,6 +215,7 @@ public class ApplicationTest {
     private StatementModel createSecondBlockStatement() {
         return StatementModel.statementBuilder()
                 .statement("return null;")
+                .index(3)
                 .startIndex(120)
                 .endIndex(131)
                 .build();

@@ -1,17 +1,18 @@
 package com.finalproject.automated.refactoring.tool.methods.detection.java.service.impl;
 
+import com.finalproject.automated.refactoring.tool.methods.detection.java.model.SaveVariableVA;
 import com.finalproject.automated.refactoring.tool.methods.detection.java.service.MethodVariableAnalysis;
 import com.finalproject.automated.refactoring.tool.model.BlockModel;
 import com.finalproject.automated.refactoring.tool.model.MethodModel;
 import com.finalproject.automated.refactoring.tool.model.PropertyModel;
 import com.finalproject.automated.refactoring.tool.model.StatementModel;
+import com.finalproject.automated.refactoring.tool.model.VariablePropertyModel;
 import com.finalproject.automated.refactoring.tool.utils.service.VariableHelper;
 import lombok.NonNull;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * @author fazazulfikapp
@@ -26,6 +27,7 @@ public class MethodVariableAnalysisImpl implements MethodVariableAnalysis {
     private VariableHelper variableHelper;
 
     private static final String GLOBAL_VARIABLE_PREFIX = "this.";
+    private static final String EMPTY_STRING = "";
 
     @Override
     public void analysis(@NonNull MethodModel methodModel) {
@@ -35,7 +37,7 @@ public class MethodVariableAnalysisImpl implements MethodVariableAnalysis {
 
     private void readStatement(StatementModel statementModel, MethodModel methodModel) {
         List<String> variables = variableHelper.readVariable(statementModel.getStatement());
-        saveVariables(variables, methodModel);
+        saveVariables(statementModel, variables, methodModel);
 
         if (statementModel instanceof BlockModel) {
             readBlockStatement(statementModel, methodModel);
@@ -47,23 +49,29 @@ public class MethodVariableAnalysisImpl implements MethodVariableAnalysis {
                 .forEach(blockStatementModel -> readStatement(blockStatementModel, methodModel));
     }
 
-    private void saveVariables(List<String> variables, MethodModel methodModel) {
-        AtomicBoolean isClass = new AtomicBoolean();
+    private void saveVariables(StatementModel statementModel, List<String> variables,
+                               MethodModel methodModel) {
+        SaveVariableVA saveVariableVA = SaveVariableVA.builder()
+                .statementModel(statementModel)
+                .methodModel(methodModel)
+                .build();
 
         variables.stream()
                 .filter(this::isNotOperators)
-                .forEach(variable -> saveVariable(variable, isClass, methodModel));
+                .forEach(variable -> saveVariable(variable, saveVariableVA));
     }
 
     private Boolean isNotOperators(String variable) {
         return !variable.matches(VariableHelper.OPERATORS_CHARACTERS_REGEX);
     }
 
-    private void saveVariable(String variable, AtomicBoolean isClass, MethodModel methodModel) {
+    private void saveVariable(String variable, SaveVariableVA saveVariableVA) {
         if (isPropertyType(variable)) {
-            savePropertyType(variable, isClass, methodModel);
+            savePropertyType(variable, saveVariableVA);
+        } else if (checkGlobalVariable(variable)) {
+            saveGlobalVariableWithPreProcessing(variable, saveVariableVA.getMethodModel());
         } else {
-            checkVariableDomain(variable, isClass, methodModel);
+            checkVariableDomain(variable, saveVariableVA);
         }
     }
 
@@ -72,32 +80,53 @@ public class MethodVariableAnalysisImpl implements MethodVariableAnalysis {
                 variableHelper.isClassName(variable);
     }
 
-    private void savePropertyType(String variable, AtomicBoolean isClass, MethodModel methodModel) {
-        PropertyModel propertyModel = PropertyModel.builder()
-                .type(variable)
+    private void savePropertyType(String variable, SaveVariableVA saveVariableVA) {
+        VariablePropertyModel variablePropertyModel = VariablePropertyModel.variablePropertyBuilder()
+                .statementIndex(saveVariableVA.getStatementModel().getIndex())
                 .build();
 
-        methodModel.getLocalVariables()
-                .add(propertyModel);
+        variablePropertyModel.setType(variable);
 
-        isClass.set(Boolean.TRUE);
+        saveVariableVA.getMethodModel()
+                .getLocalVariables()
+                .add(variablePropertyModel);
+
+        saveVariableVA.getIsClass()
+                .set(Boolean.TRUE);
     }
 
-    private void checkVariableDomain(String variable, AtomicBoolean isClass, MethodModel methodModel) {
-        if (isClass.get()) {
-            saveLocalVariable(variable, isClass, methodModel);
+    private Boolean checkGlobalVariable(String variable) {
+        return variable.startsWith(GLOBAL_VARIABLE_PREFIX);
+    }
+
+    private void saveGlobalVariableWithPreProcessing(String variable, MethodModel methodModel) {
+        variable = variable.replace(GLOBAL_VARIABLE_PREFIX, EMPTY_STRING);
+        saveGlobalVariable(variable, methodModel);
+    }
+
+    private void saveGlobalVariable(String variable, MethodModel methodModel) {
+        methodModel.getGlobalVariables()
+                .add(variable);
+    }
+
+    private void checkVariableDomain(String variable, SaveVariableVA saveVariableVA) {
+        if (saveVariableVA.getIsClass().get()) {
+            saveLocalVariable(variable, saveVariableVA);
         } else {
-            checkVariable(variable, methodModel);
+            checkVariable(variable, saveVariableVA.getMethodModel());
         }
     }
 
-    private void saveLocalVariable(String variable, AtomicBoolean isClass, MethodModel methodModel) {
-        methodModel.getLocalVariables()
+    private void saveLocalVariable(String variable, SaveVariableVA saveVariableVA) {
+        saveVariableVA.getMethodModel()
+                .getLocalVariables()
                 .stream()
                 .filter(this::isNoNameLocalVariable)
-                .forEach(propertyModel -> saveLocalVariableName(propertyModel, variable));
+                .forEach(propertyModel ->
+                        saveLocalVariableName(propertyModel, variable));
 
-        isClass.set(Boolean.FALSE);
+        saveVariableVA.getIsClass()
+                .set(Boolean.FALSE);
     }
 
     private Boolean isNoNameLocalVariable(PropertyModel propertyModel) {
@@ -141,10 +170,5 @@ public class MethodVariableAnalysisImpl implements MethodVariableAnalysis {
 
         return methodModel.getGlobalVariables().contains(variable) ||
                 methodModel.getGlobalVariables().contains(globalVariable);
-    }
-
-    private void saveGlobalVariable(String variable, MethodModel methodModel) {
-        methodModel.getGlobalVariables()
-                .add(variable);
     }
 }

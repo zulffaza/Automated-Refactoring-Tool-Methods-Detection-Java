@@ -315,6 +315,7 @@ public class JavaMethodAnalysisTest {
                         .build()
         ));
         methodModel.setExceptions(Arrays.asList("Exception", "IOException"));
+
         return null;
     }
 
@@ -330,6 +331,7 @@ public class JavaMethodAnalysisTest {
                         .name("name")
                         .build()
         ));
+
         return null;
     }
 
@@ -349,11 +351,13 @@ public class JavaMethodAnalysisTest {
     private Answer stubMethodStatementAnalysisIndexModel(InvocationOnMock invocationOnMock) {
         MethodModel methodModel = invocationOnMock.getArgument(FIRST_INDEX);
         StatementModel statement = StatementModel.statementBuilder()
+                .index(FIRST_INDEX)
                 .statement(METHOD_STATEMENT)
                 .build();
 
         methodModel.getStatements()
                 .add(statement);
+
         return null;
     }
 
@@ -411,6 +415,8 @@ public class JavaMethodAnalysisTest {
         assertEquals(ONE.intValue(), result.get(key).get(FIRST_INDEX).getStatements().size());
         assertEquals(METHOD_STATEMENT, result.get(key).get(FIRST_INDEX)
                 .getStatements().get(FIRST_INDEX).getStatement());
+        assertEquals(FIRST_INDEX, result.get(key).get(FIRST_INDEX)
+                .getStatements().get(FIRST_INDEX).getIndex());
     }
 
     private void analysisSuccessCheckResultAnother(Map<String, List<MethodModel>> result) {
@@ -474,6 +480,8 @@ public class JavaMethodAnalysisTest {
         assertEquals(ONE.intValue(), result.get(key).get(SECOND_INDEX).getStatements().size());
         assertEquals(METHOD_STATEMENT, result.get(key).get(SECOND_INDEX)
                 .getStatements().get(FIRST_INDEX).getStatement());
+        assertEquals(FIRST_INDEX, result.get(key).get(SECOND_INDEX)
+                .getStatements().get(FIRST_INDEX).getIndex());
     }
 
     private void analysisSuccessResultIsNotEmptyCheckResultAnother(Map<String, List<MethodModel>> result) {
@@ -525,6 +533,8 @@ public class JavaMethodAnalysisTest {
         assertEquals(ONE.intValue(), result.get(key).get(FIRST_INDEX).getStatements().size());
         assertEquals(METHOD_STATEMENT, result.get(key).get(FIRST_INDEX)
                 .getStatements().get(FIRST_INDEX).getStatement());
+        assertEquals(FIRST_INDEX, result.get(key).get(FIRST_INDEX)
+                .getStatements().get(FIRST_INDEX).getIndex());
     }
 
     private void analysisSuccessNonConstructorMethodsCheckResultAnother(Map<String, List<MethodModel>> result) {
