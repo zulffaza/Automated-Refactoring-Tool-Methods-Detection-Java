@@ -5,6 +5,7 @@ import com.finalproject.automated.refactoring.tool.model.BlockModel;
 import com.finalproject.automated.refactoring.tool.model.MethodModel;
 import com.finalproject.automated.refactoring.tool.model.PropertyModel;
 import com.finalproject.automated.refactoring.tool.model.StatementModel;
+import com.finalproject.automated.refactoring.tool.model.VariablePropertyModel;
 import com.finalproject.automated.refactoring.tool.utils.service.VariableHelper;
 import org.junit.Before;
 import org.junit.Test;
@@ -39,13 +40,14 @@ public class MethodVariableAnalysisImplTest {
     private VariableHelper variableHelper;
 
     private static final String FIRST_STATEMENT = "try {";
-    private static final String FIRST_BLOCK_STATEMENT = "return user + \"-\" + name + extension;";
+    private static final String FIRST_BLOCK_STATEMENT = "return user + \"-\" + this.name + extension;";
     private static final String FIRST_BLOCK_END_STATEMENT = "}";
     private static final String SECOND_STATEMENT = "catch (NullPointerException e) {";
     private static final String SECOND_BLOCK_STATEMENT = "return null;";
     private static final String SECOND_BLOCK_END_STATEMENT = "}";
     private static final String FIRST_READ_VARIABLE = "user";
-    private static final String SECOND_READ_VARIABLE = "name";
+    private static final String SECOND_READ_VARIABLE_CLEAN = "name";
+    private static final String SECOND_READ_VARIABLE = "this." + SECOND_READ_VARIABLE_CLEAN;
     private static final String THIRD_READ_VARIABLE = "extension";
     private static final String FOURTH_READ_VARIABLE = "NullPointerException";
     private static final String FIFTH_READ_VARIABLE = "e";
@@ -148,6 +150,7 @@ public class MethodVariableAnalysisImplTest {
         BlockModel blockModel = BlockModel.blockBuilder()
                 .build();
         blockModel.setStatement(FIRST_STATEMENT);
+        blockModel.setIndex(0);
         blockModel.setStartIndex(0);
         blockModel.setEndIndex(4);
         blockModel.getStatements()
@@ -160,6 +163,7 @@ public class MethodVariableAnalysisImplTest {
     private StatementModel createFirstBlockStatement() {
         return StatementModel.statementBuilder()
                 .statement(FIRST_BLOCK_STATEMENT)
+                .index(1)
                 .startIndex(18)
                 .endIndex(54)
                 .build();
@@ -177,6 +181,7 @@ public class MethodVariableAnalysisImplTest {
         BlockModel blockModel = BlockModel.blockBuilder()
                 .build();
         blockModel.setStatement(SECOND_STATEMENT);
+        blockModel.setIndex(2);
         blockModel.setStartIndex(66);
         blockModel.setEndIndex(97);
         blockModel.getStatements()
@@ -189,6 +194,7 @@ public class MethodVariableAnalysisImplTest {
     private StatementModel createSecondBlockStatement() {
         return StatementModel.statementBuilder()
                 .statement(SECOND_BLOCK_STATEMENT)
+                .index(3)
                 .startIndex(111)
                 .endIndex(122)
                 .build();
@@ -204,7 +210,7 @@ public class MethodVariableAnalysisImplTest {
 
     private List<String> createFirstBlockStatementVariables() {
         List<String> firstBlockStatementVariables = Arrays.asList(
-                "user", "+", "+", "name", "+", "extension"
+                "user", "+", "+", "this.name", "+", "extension"
         );
         return new ArrayList<>(firstBlockStatementVariables);
     }
@@ -218,17 +224,21 @@ public class MethodVariableAnalysisImplTest {
 
     private List<String> createExpectedGlobalVariables() {
         List<String> expectedGlobalVariables = Arrays.asList(
-                SECOND_READ_VARIABLE, THIRD_READ_VARIABLE
+                SECOND_READ_VARIABLE_CLEAN, THIRD_READ_VARIABLE
         );
         return new ArrayList<>(expectedGlobalVariables);
     }
 
-    private List<PropertyModel> createExpectedLocalVariables() {
-        List<PropertyModel> expectedLocalVariables = Collections.singletonList(
-                PropertyModel.builder()
-                        .type(FOURTH_READ_VARIABLE)
-                        .name(FIFTH_READ_VARIABLE)
-                        .build());
+    private List<VariablePropertyModel> createExpectedLocalVariables() {
+        VariablePropertyModel variablePropertyModel = VariablePropertyModel.variablePropertyBuilder()
+                .statementIndex(2)
+                .build();
+
+        variablePropertyModel.setType(FOURTH_READ_VARIABLE);
+        variablePropertyModel.setName(FIFTH_READ_VARIABLE);
+
+        List<VariablePropertyModel> expectedLocalVariables = Collections
+                .singletonList(variablePropertyModel);
         return new ArrayList<>(expectedLocalVariables);
     }
 
