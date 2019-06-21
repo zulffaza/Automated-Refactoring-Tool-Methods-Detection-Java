@@ -106,6 +106,7 @@ public class MethodStatementAnalysisImplTest {
     private StatementModel createFirstBlockEndStatement() {
         return StatementModel.statementBuilder()
                 .statement("}")
+                .index(2)
                 .startIndex(64)
                 .endIndex(64)
                 .build();
@@ -137,6 +138,7 @@ public class MethodStatementAnalysisImplTest {
     private StatementModel createSecondBlockEndStatement() {
         return StatementModel.statementBuilder()
                 .statement("}")
+                .index(4)
                 .startIndex(132)
                 .endIndex(132)
                 .build();
