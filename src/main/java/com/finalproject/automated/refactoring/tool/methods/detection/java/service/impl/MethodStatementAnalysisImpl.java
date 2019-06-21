@@ -158,6 +158,7 @@ public class MethodStatementAnalysisImpl implements MethodStatementAnalysis {
         String statement = createStatement(saveStatementVA);
         StatementModel statementModel = StatementModel.statementBuilder()
                 .statement(statement)
+                .index(saveStatementVA.getIndex())
                 .build();
 
         addIndexToStatementModel(statementModel, saveStatementVA);

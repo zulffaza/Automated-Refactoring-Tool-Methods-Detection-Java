@@ -193,6 +193,7 @@ public class ApplicationTest {
     private StatementModel createFirstBlockEndStatement() {
         return StatementModel.statementBuilder()
                 .statement("}")
+                .index(2)
                 .startIndex(73)
                 .endIndex(73)
                 .build();
@@ -224,6 +225,7 @@ public class ApplicationTest {
     private StatementModel createSecondBlockEndStatement() {
         return StatementModel.statementBuilder()
                 .statement("}")
+                .index(4)
                 .startIndex(141)
                 .endIndex(141)
                 .build();
