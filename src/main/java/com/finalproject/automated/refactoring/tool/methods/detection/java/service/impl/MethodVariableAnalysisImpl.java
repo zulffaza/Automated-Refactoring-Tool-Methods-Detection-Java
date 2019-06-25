@@ -30,6 +30,8 @@ public class MethodVariableAnalysisImpl implements MethodVariableAnalysis {
     private static final String GLOBAL_VARIABLE_PREFIX = "this.";
     private static final String EMPTY_STRING = "";
 
+    private static final Integer FIRST_INDEX = 0;
+
     @Override
     public void analysis(@NonNull MethodModel methodModel) {
         methodModel.getStatements()
@@ -178,15 +180,23 @@ public class MethodVariableAnalysisImpl implements MethodVariableAnalysis {
     private void removeUnusedVariable(MethodModel methodModel) {
         List<VariablePropertyModel> localVariables = methodModel.getLocalVariables()
                 .stream()
-                .filter(variable -> isNotMethodParameter(methodModel.getParameters(), variable))
+                .filter(variable -> isNotMethodParameter(methodModel.getParameters(), variable, methodModel))
                 .collect(Collectors.toList());
 
         methodModel.setLocalVariables(localVariables);
     }
 
-    private Boolean isNotMethodParameter(List<PropertyModel> parameters, PropertyModel variable) {
-        return parameters.stream()
-                .noneMatch(parameter -> isParameterNameEquals(parameter, variable));
+    private Boolean isNotMethodParameter(List<PropertyModel> parameters, PropertyModel variable,
+                                         MethodModel methodModel) {
+        List<String> equalsToParameters = parameters.stream()
+                .filter(parameter -> isParameterNameEquals(parameter, variable))
+                .map(PropertyModel::getName)
+                .collect(Collectors.toList());
+
+        methodModel.getGlobalVariables()
+                .addAll(FIRST_INDEX, equalsToParameters);
+
+        return equalsToParameters.isEmpty();
     }
 
     private Boolean isParameterNameEquals(PropertyModel parameter, PropertyModel variable) {
