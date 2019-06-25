@@ -13,6 +13,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * @author fazazulfikapp
@@ -33,6 +34,8 @@ public class MethodVariableAnalysisImpl implements MethodVariableAnalysis {
     public void analysis(@NonNull MethodModel methodModel) {
         methodModel.getStatements()
                 .forEach(statementModel -> readStatement(statementModel, methodModel));
+
+        removeUnusedVariable(methodModel);
     }
 
     private void readStatement(StatementModel statementModel, MethodModel methodModel) {
@@ -170,5 +173,24 @@ public class MethodVariableAnalysisImpl implements MethodVariableAnalysis {
 
         return methodModel.getGlobalVariables().contains(variable) ||
                 methodModel.getGlobalVariables().contains(globalVariable);
+    }
+
+    private void removeUnusedVariable(MethodModel methodModel) {
+        List<VariablePropertyModel> localVariables = methodModel.getLocalVariables()
+                .stream()
+                .filter(variable -> isNotMethodParameter(methodModel.getParameters(), variable))
+                .collect(Collectors.toList());
+
+        methodModel.setLocalVariables(localVariables);
+    }
+
+    private Boolean isNotMethodParameter(List<PropertyModel> parameters, PropertyModel variable) {
+        return parameters.stream()
+                .noneMatch(parameter -> isParameterNameEquals(parameter, variable));
+    }
+
+    private Boolean isParameterNameEquals(PropertyModel parameter, PropertyModel variable) {
+        return parameter.getName()
+                .equals(variable.getName());
     }
 }
