@@ -31,6 +31,9 @@ public class MethodAttributesAnalysisImpl implements MethodAttributesAnalysis {
 
     private static final String OPEN_PARENTHESES = "(";
     private static final String CLOSE_PARENTHESES = ")";
+    private static final String ONE_LINE_COMMENT_REGEX = "^(?://)+(?:[ \\t\\S])*";
+    private static final String MULTI_LINE_COMMENT_REGEX = "^(?:/\\*)+(?:[\\s\\S])*(?:\\*/)+";
+    private static final String EMPTY_STRING = "";
     private static final String OPEN_BRACES = "{";
     private static final String OPEN_PARENTHESES_DELIMITER = "\\" + OPEN_PARENTHESES;
     private static final String CLOSE_PARENTHESES_DELIMITER = "\\" + CLOSE_PARENTHESES;
@@ -42,7 +45,6 @@ public class MethodAttributesAnalysisImpl implements MethodAttributesAnalysis {
     private static final String WHITESPACE_DELIMITER = "(?:\\s)+";
     private static final String NON_WORDS_DELIMITER = "(?:\\W)+";
     private static final String NON_WORDS_EXCEPTION_MESSAGE = "Method name contains non words character...";
-    private static final String EMPTY_STRING = "";
 
     private static final Integer FIRST_INDEX = 0;
     private static final Integer SECOND_INDEX = 1;
@@ -54,6 +56,7 @@ public class MethodAttributesAnalysisImpl implements MethodAttributesAnalysis {
     public void analysis(FileModel fileModel, IndexModel indexModel, MethodModel methodModel) {
         String methodDeclarations = fileModel.getContent()
                 .substring(indexModel.getStart(), indexModel.getEnd()).trim();
+        methodDeclarations = removeMethodComments(methodDeclarations);
 
         List<String> splitByOpenParentheses = new ArrayList<>(
                 Arrays.asList(methodDeclarations.split(OPEN_PARENTHESES_DELIMITER)));
@@ -66,6 +69,19 @@ public class MethodAttributesAnalysisImpl implements MethodAttributesAnalysis {
         searchKeywords(fileModel.getFilename(), splitByOpenParentheses.get(FIRST_INDEX), methodModel);
         searchParameters(splitByCloseParentheses.get(FIRST_INDEX), methodModel);
         searchExceptions(splitByCloseParentheses.get(SECOND_INDEX), methodModel);
+    }
+
+    private String removeMethodComments(String methodDeclarations) {
+        methodDeclarations = removeWithEmptyString(ONE_LINE_COMMENT_REGEX, methodDeclarations);
+        methodDeclarations = removeWithEmptyString(MULTI_LINE_COMMENT_REGEX, methodDeclarations);
+
+        return methodDeclarations.trim();
+    }
+
+    private String removeWithEmptyString(String regex, String input) {
+        return Pattern.compile(regex)
+                .matcher(Matcher.quoteReplacement(input))
+                .replaceAll(EMPTY_STRING);
     }
 
     private void normalizeAttributes(List<String> words, String joinDelimiter) {
