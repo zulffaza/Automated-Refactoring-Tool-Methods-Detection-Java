@@ -33,6 +33,7 @@ public class MethodAttributesAnalysisImpl implements MethodAttributesAnalysis {
     private static final String CLOSE_PARENTHESES = ")";
     private static final String ONE_LINE_COMMENT_REGEX = "^(?://)+(?:[ \\t\\S])*";
     private static final String MULTI_LINE_COMMENT_REGEX = "^(?:/\\*)+(?:[\\s\\S])*(?:\\*/)+";
+    private static final String ERROR_MULTI_LINE_COMMENT_REGEX = "^(?:[\\s\\S])*(?:\\*/)+";
     private static final String EMPTY_STRING = "";
     private static final String OPEN_BRACES = "{";
     private static final String OPEN_PARENTHESES_DELIMITER = "\\" + OPEN_PARENTHESES;
@@ -74,14 +75,16 @@ public class MethodAttributesAnalysisImpl implements MethodAttributesAnalysis {
     private String removeMethodComments(String methodDeclarations) {
         methodDeclarations = removeWithEmptyString(ONE_LINE_COMMENT_REGEX, methodDeclarations);
         methodDeclarations = removeWithEmptyString(MULTI_LINE_COMMENT_REGEX, methodDeclarations);
+        methodDeclarations = removeWithEmptyString(ERROR_MULTI_LINE_COMMENT_REGEX, methodDeclarations);
 
-        return methodDeclarations.trim();
+        return methodDeclarations;
     }
 
     private String removeWithEmptyString(String regex, String input) {
         return Pattern.compile(regex)
                 .matcher(Matcher.quoteReplacement(input))
-                .replaceAll(EMPTY_STRING);
+                .replaceAll(EMPTY_STRING)
+                .trim();
     }
 
     private void normalizeAttributes(List<String> words, String joinDelimiter) {
