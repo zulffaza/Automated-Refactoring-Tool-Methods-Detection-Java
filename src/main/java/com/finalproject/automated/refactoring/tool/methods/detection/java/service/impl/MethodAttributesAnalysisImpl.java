@@ -6,6 +6,7 @@ import com.finalproject.automated.refactoring.tool.methods.detection.model.Index
 import com.finalproject.automated.refactoring.tool.model.MethodModel;
 import com.finalproject.automated.refactoring.tool.model.PropertyModel;
 import com.finalproject.automated.refactoring.tool.utils.service.MergeListHelper;
+import com.finalproject.automated.refactoring.tool.utils.service.VariableHelper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -158,20 +159,7 @@ public class MethodAttributesAnalysisImpl implements MethodAttributesAnalysis {
                 .collect(Collectors.toList());
 
         normalizeKeywords(words, " ");
-
-        boolean isConstructor = words.contains(filename);
-
-        Integer numOfReservedWords = getNumOfReservedWords(isConstructor);
-        Integer size = words.size();
-        Integer maxKeywords = size - numOfReservedWords;
-
-        saveKeywords(words, maxKeywords, methodModel);
-        numOfReservedWords--;
-
-        if (!isConstructor)
-            methodModel.setReturnType(words.get(maxKeywords));
-
-        setName(words.get(maxKeywords + numOfReservedWords), methodModel);
+        buildKeywords(words, filename, methodModel);
     }
 
     private void normalizeKeywords(List<String> words, String delimiter) {
@@ -237,6 +225,24 @@ public class MethodAttributesAnalysisImpl implements MethodAttributesAnalysis {
         return result;
     }
 
+    private void buildKeywords(List<String> words, String filename,
+                               MethodModel methodModel)
+            throws IndexOutOfBoundsException, IllegalArgumentException {
+        boolean isConstructor = words.contains(filename);
+
+        Integer numOfReservedWords = getNumOfReservedWords(isConstructor);
+        Integer size = words.size();
+        Integer maxKeywords = size - numOfReservedWords;
+
+        saveKeywords(words, maxKeywords, methodModel);
+        numOfReservedWords--;
+
+        if (!isConstructor)
+            methodModel.setReturnType(words.get(maxKeywords));
+
+        setName(words.get(maxKeywords + numOfReservedWords), methodModel);
+    }
+
     private Integer getNumOfReservedWords(Boolean isConstructor) {
         if (isConstructor)
             return ONE_RESERVED_WORDS;
@@ -254,10 +260,15 @@ public class MethodAttributesAnalysisImpl implements MethodAttributesAnalysis {
         Pattern pattern = Pattern.compile(NON_WORDS_DELIMITER);
         Matcher matcher = pattern.matcher(name);
 
-        if (matcher.find())
+        if (isNotMethodName(name, matcher)) {
             throw new IllegalArgumentException(NON_WORDS_EXCEPTION_MESSAGE);
+        }
 
         methodModel.setName(name);
+    }
+
+    private Boolean isNotMethodName(String name, Matcher matcher) throws IllegalArgumentException {
+        return VariableHelper.KEYWORDS.contains(name) || matcher.find();
     }
 
     private void searchParameters(String parameters, MethodModel methodModel) {
