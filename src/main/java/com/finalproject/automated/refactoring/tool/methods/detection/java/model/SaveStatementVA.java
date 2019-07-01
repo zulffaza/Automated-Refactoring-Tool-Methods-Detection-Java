@@ -24,7 +24,13 @@ public class SaveStatementVA {
 
     private Integer index;
 
+    private Integer iterationIndex;
+
     private Integer startStatementIndex;
 
     private Integer endStatementIndex;
+
+    private Boolean isOneLineComments;
+
+    private Boolean isMultiLineComments;
 }
