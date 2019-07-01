@@ -26,9 +26,14 @@ public class MethodStatementAnalysisImpl implements MethodStatementAnalysis {
 
     private static final Integer ONE = 1;
 
+    private static final Character COMMENTS_START_CHARACTER = '/';
+    private static final Character MULTI_LINE_COMMENTS_START_CHARACTER = '*';
+    private static final Character NEW_LINE = '\n';
     private static final Character OPEN_BRACES = '{';
     private static final Character CLOSED_BRACES = '}';
     private static final Character SEMICOLON = ';';
+
+    private static final Integer SECOND_INDEX = 1;
 
     @Override
     public void analysis(MethodModel methodModel) {
@@ -36,7 +41,8 @@ public class MethodStatementAnalysisImpl implements MethodStatementAnalysis {
         SaveStatementVA saveStatementVA = createSaveStatementVA(methodModel);
 
         for (int index = 0; index < saveStatementVA.getBody().length(); index++) {
-            checkStatement(saveStatementVA, index, isStatementVA);
+            saveStatementVA.setIterationIndex(index);
+            checkStatement(saveStatementVA, isStatementVA);
         }
     }
 
@@ -46,6 +52,8 @@ public class MethodStatementAnalysisImpl implements MethodStatementAnalysis {
                 .index(0)
                 .startStatementIndex(0)
                 .endStatementIndex(0)
+                .isOneLineComments(Boolean.FALSE)
+                .isMultiLineComments(Boolean.FALSE)
                 .build();
 
         saveStatementVA.getStatements()
@@ -54,16 +62,108 @@ public class MethodStatementAnalysisImpl implements MethodStatementAnalysis {
         return saveStatementVA;
     }
 
-    private void checkStatement(SaveStatementVA saveStatementVA,
-                                Integer index, IsStatementVA isStatementVA) {
-        Character character = saveStatementVA.getBody().charAt(index);
-        saveStatementVA.setEndStatementIndex(index);
+    private void checkStatement(SaveStatementVA saveStatementVA, IsStatementVA isStatementVA) {
+        Character character = saveStatementVA.getBody()
+                .charAt(saveStatementVA.getIterationIndex());
+        saveStatementVA.setEndStatementIndex(saveStatementVA.getIterationIndex());
 
-        if (statementHelper.isStatement(character, isStatementVA)) {
+        if (isStatement(character, saveStatementVA, isStatementVA)) {
             saveStatement(character, saveStatementVA);
         } else if (isEndOfBlock(character, isStatementVA)) {
             changeBlock(saveStatementVA);
         }
+    }
+
+    private Boolean isStatement(Character character, SaveStatementVA saveStatementVA,
+                                IsStatementVA isStatementVA) {
+        Character nextCharacter = getNextCharacter(saveStatementVA);
+
+        if (isComments(character, nextCharacter, isStatementVA)) {
+            return flagComments(character, nextCharacter, saveStatementVA);
+        } else if (isCloseComments(character, nextCharacter, isStatementVA)) {
+            return removeFlagComments(saveStatementVA);
+        } else {
+            return checkIfIsStatement(character, saveStatementVA, isStatementVA);
+        }
+    }
+
+    private Character getNextCharacter(SaveStatementVA saveStatementVA) {
+        try {
+            return saveStatementVA.getBody()
+                    .charAt(saveStatementVA.getIterationIndex() + SECOND_INDEX);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private Boolean isComments(Character character, Character nextCharacter,
+                               IsStatementVA isStatementVA) {
+        return (isStatementVA.getStack().isEmpty() && !isStatementVA.getEscape().get()) &&
+                (isOneLineCommentsOpening(character, nextCharacter) ||
+                        isMultiLineCommentsOpening(character, nextCharacter));
+    }
+
+    private Boolean isOneLineCommentsOpening(Character character, Character nextCharacter) {
+        return character.equals(COMMENTS_START_CHARACTER) &&
+                nextCharacter != null &&
+                nextCharacter.equals(COMMENTS_START_CHARACTER);
+    }
+
+    private Boolean isMultiLineCommentsOpening(Character character, Character nextCharacter) {
+        return character.equals(COMMENTS_START_CHARACTER) &&
+                nextCharacter != null &&
+                nextCharacter.equals(MULTI_LINE_COMMENTS_START_CHARACTER);
+    }
+
+    private Boolean flagComments(Character character, Character nextCharacter,
+                                 SaveStatementVA saveStatementVA) {
+        saveStatementVA.setIsOneLineComments(isOneLineCommentsOpening(character, nextCharacter));
+        saveStatementVA.setIsMultiLineComments(isMultiLineCommentsOpening(character, nextCharacter));
+
+        return Boolean.FALSE;
+    }
+
+    private Boolean isCloseComments(Character character, Character nextCharacter,
+                                    IsStatementVA isStatementVA) {
+        return (isStatementVA.getStack().isEmpty() && !isStatementVA.getEscape().get()) &&
+                (isOneLineCommentsClosing(character) ||
+                        isMultiLineCommentsClosing(character, nextCharacter));
+    }
+
+    private Boolean isOneLineCommentsClosing(Character character) {
+        return character.equals(NEW_LINE);
+    }
+
+    private Boolean isMultiLineCommentsClosing(Character character, Character nextCharacter) {
+        return character.equals(MULTI_LINE_COMMENTS_START_CHARACTER) &&
+                nextCharacter != null &&
+                nextCharacter.equals(COMMENTS_START_CHARACTER);
+    }
+
+    private Boolean removeFlagComments(SaveStatementVA saveStatementVA) {
+        if (saveStatementVA.getIsOneLineComments()) {
+            saveStatementVA.setIsOneLineComments(Boolean.FALSE);
+        }
+
+        if (saveStatementVA.getIsMultiLineComments()) {
+            saveStatementVA.setIsMultiLineComments(Boolean.FALSE);
+        }
+
+        return Boolean.FALSE;
+    }
+
+    private Boolean checkIfIsStatement(Character character, SaveStatementVA saveStatementVA,
+                                       IsStatementVA isStatementVA) {
+        if (!isInsideComments(saveStatementVA)) {
+            return statementHelper.isStatement(character, isStatementVA);
+        } else {
+            return Boolean.FALSE;
+        }
+    }
+
+    private Boolean isInsideComments(SaveStatementVA saveStatementVA) {
+        return saveStatementVA.getIsOneLineComments() ||
+                saveStatementVA.getIsMultiLineComments();
     }
 
     private void saveStatement(Character character, SaveStatementVA saveStatementVA) {

@@ -81,10 +81,16 @@ public class MethodAttributesAnalysisImpl implements MethodAttributesAnalysis {
     }
 
     private String removeWithEmptyString(String regex, String input) {
-        return Pattern.compile(regex)
-                .matcher(Matcher.quoteReplacement(input))
-                .replaceAll(EMPTY_STRING)
-                .trim();
+        Matcher matcher = Pattern.compile(regex, Pattern.MULTILINE)
+                .matcher(Matcher.quoteReplacement(input));
+
+        if (matcher.find()) {
+            return matcher
+                    .replaceAll(EMPTY_STRING)
+                    .trim();
+        } else {
+            return input;
+        }
     }
 
     private void normalizeAttributes(List<String> words, String joinDelimiter) {
