@@ -37,6 +37,7 @@ public class MethodAttributesAnalysisImpl implements MethodAttributesAnalysis {
     private static final String ERROR_MULTI_LINE_COMMENT_REGEX = "^(?:[\\s\\S])*(?:\\*/)+";
     private static final String EMPTY_STRING = "";
     private static final String OPEN_BRACES = "{";
+    private static final String NEW_KEYWORD = "new";
     private static final String OPEN_PARENTHESES_DELIMITER = "\\" + OPEN_PARENTHESES;
     private static final String CLOSE_PARENTHESES_DELIMITER = "\\" + CLOSE_PARENTHESES;
     private static final String AT = "@";
@@ -46,6 +47,7 @@ public class MethodAttributesAnalysisImpl implements MethodAttributesAnalysis {
     private static final String POINT_DELIMITER = "\\.";
     private static final String WHITESPACE_DELIMITER = "(?:\\s)+";
     private static final String NON_WORDS_DELIMITER = "(?:\\W)+";
+    private static final String ANONYMOUS_CLASS_EXCEPTION_MESSAGE = "Is it a anonymous class...";
     private static final String NON_WORDS_EXCEPTION_MESSAGE = "Method name contains non words character...";
 
     private static final Integer FIRST_INDEX = 0;
@@ -237,8 +239,9 @@ public class MethodAttributesAnalysisImpl implements MethodAttributesAnalysis {
         saveKeywords(words, maxKeywords, methodModel);
         numOfReservedWords--;
 
-        if (!isConstructor)
-            methodModel.setReturnType(words.get(maxKeywords));
+        if (!isConstructor) {
+            setReturnType(methodModel, maxKeywords, words);
+        }
 
         setName(words.get(maxKeywords + numOfReservedWords), methodModel);
     }
@@ -254,6 +257,17 @@ public class MethodAttributesAnalysisImpl implements MethodAttributesAnalysis {
         words.stream()
                 .limit(numOfKeywords)
                 .forEach(methodModel.getKeywords()::add);
+    }
+
+    private void setReturnType(MethodModel methodModel, Integer maxKeywords,
+                               List<String> words) throws IllegalArgumentException {
+        String returnType = words.get(maxKeywords);
+
+        if (returnType.equals(NEW_KEYWORD)) {
+            throw new IllegalArgumentException(ANONYMOUS_CLASS_EXCEPTION_MESSAGE);
+        }
+
+        methodModel.setReturnType(returnType);
     }
 
     private void setName(String name, MethodModel methodModel) throws IllegalArgumentException {
