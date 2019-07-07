@@ -17,6 +17,7 @@ import java.util.Stack;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * @author Faza Zulfika P P
@@ -32,6 +33,8 @@ public class MethodAttributesAnalysisImpl implements MethodAttributesAnalysis {
 
     private static final String OPEN_PARENTHESES = "(";
     private static final String CLOSE_PARENTHESES = ")";
+    private static final String CLASS_REGEX = "(?:class)+(?:\\s)+(?:([A-Z_$])[a-zA-Z0-9_$<>,\\s]+)";
+    private static final String ANONYMOUS_CLASS_REGEX = "(?:new)+(?:\\s)+(?:([A-Z_$])[a-zA-Z0-9_$<>,\\s]+)+(?:(?:[\\[\\]])|((?:\\()+(?:[@\\w\\[\\]<>\\(\\)=\".,\\s])*(?:\\))))+(\\{)+";
     private static final String ONE_LINE_COMMENT_REGEX = "^(?://)+(?:[ \\t\\S])*";
     private static final String MULTI_LINE_COMMENT_REGEX = "^(?:/\\*)+(?:[\\s\\S])*(?:\\*/)+";
     private static final String ERROR_MULTI_LINE_COMMENT_REGEX = "^(?:[\\s\\S])*(?:\\*/)+";
@@ -44,7 +47,7 @@ public class MethodAttributesAnalysisImpl implements MethodAttributesAnalysis {
     private static final String LESS_THAN = "<";
     private static final String GREATER_THAN = ">";
     private static final String QOMMA_DELIMITER = ",";
-    private static final String POINT_DELIMITER = "\\.";
+    private static final String SPACE_DELIMITER = " ";
     private static final String WHITESPACE_DELIMITER = "(?:\\s)+";
     private static final String NON_WORDS_DELIMITER = "(?:\\W)+";
     private static final String ANONYMOUS_CLASS_EXCEPTION_MESSAGE = "Is it a anonymous class...";
@@ -70,7 +73,7 @@ public class MethodAttributesAnalysisImpl implements MethodAttributesAnalysis {
                 Arrays.asList(splitByOpenParentheses.get(SECOND_INDEX).split(CLOSE_PARENTHESES_DELIMITER)));
         normalizeAttributes(splitByCloseParentheses, CLOSE_PARENTHESES);
 
-        searchKeywords(fileModel.getFilename(), splitByOpenParentheses.get(FIRST_INDEX), methodModel);
+        searchKeywords(fileModel, splitByOpenParentheses.get(FIRST_INDEX), methodModel);
         searchParameters(splitByCloseParentheses.get(FIRST_INDEX), methodModel);
         searchExceptions(splitByCloseParentheses.get(SECOND_INDEX), methodModel);
     }
@@ -126,8 +129,8 @@ public class MethodAttributesAnalysisImpl implements MethodAttributesAnalysis {
     }
 
     private Boolean isSplitIndexFound(String firstChar, Integer index) {
-        Boolean isAt = firstChar.equals(AT);
-        Boolean isFirst = index.equals(FIRST_INDEX);
+        boolean isAt = firstChar.equals(AT);
+        boolean isFirst = index.equals(FIRST_INDEX);
 
         return ((isFirst && !isAt) || (!isFirst && isAt));
     }
@@ -151,17 +154,16 @@ public class MethodAttributesAnalysisImpl implements MethodAttributesAnalysis {
         words.add(parameter);
     }
 
-    private void searchKeywords(String filename, String keywords, MethodModel methodModel)
+    private void searchKeywords(FileModel fileModel, String keywords, MethodModel methodModel)
             throws IndexOutOfBoundsException, IllegalArgumentException {
-        filename = filename.split(POINT_DELIMITER)[FIRST_INDEX];
         keywords = keywords.trim();
 
         List<String> words = Arrays.stream(keywords.split(WHITESPACE_DELIMITER))
                 .map(String::trim)
                 .collect(Collectors.toList());
 
-        normalizeKeywords(words, " ");
-        buildKeywords(words, filename, methodModel);
+        normalizeKeywords(words, SPACE_DELIMITER);
+        buildKeywords(words, fileModel, methodModel);
     }
 
     private void normalizeKeywords(List<String> words, String delimiter) {
@@ -180,7 +182,7 @@ public class MethodAttributesAnalysisImpl implements MethodAttributesAnalysis {
 
     private Boolean isMergePoint(String word, Stack<String> stack) {
         Boolean saveIndex = Boolean.FALSE;
-        Boolean isEmpty = stack.isEmpty();
+        boolean isEmpty = stack.isEmpty();
 
         for (Integer newIndex = FIRST_INDEX; newIndex < word.length(); newIndex++) {
             String character = word.substring(newIndex, newIndex + SECOND_INDEX);
@@ -227,10 +229,10 @@ public class MethodAttributesAnalysisImpl implements MethodAttributesAnalysis {
         return result;
     }
 
-    private void buildKeywords(List<String> words, String filename,
+    private void buildKeywords(List<String> words, FileModel fileModel,
                                MethodModel methodModel)
             throws IndexOutOfBoundsException, IllegalArgumentException {
-        boolean isConstructor = words.contains(filename);
+        Boolean isConstructor = isConstructor(words, fileModel);
 
         Integer numOfReservedWords = getNumOfReservedWords(isConstructor);
         Integer size = words.size();
@@ -244,6 +246,44 @@ public class MethodAttributesAnalysisImpl implements MethodAttributesAnalysis {
         }
 
         setName(words.get(maxKeywords + numOfReservedWords), methodModel);
+    }
+
+    private Boolean isConstructor(List<String> words, FileModel fileModel) {
+        String content = fileModel.getContent();
+        List<String> allClass = getAllClassNameByRegex(content, CLASS_REGEX);
+        List<String> allAnonymousClass = getAllClassNameByRegex(content, ANONYMOUS_CLASS_REGEX);
+        List<String> classes = Stream.concat(allClass.stream(), allAnonymousClass.stream())
+                .distinct()
+                .collect(Collectors.toList());
+
+        return isMethodConstructor(words, classes);
+    }
+
+    private List<String> getAllClassNameByRegex(String content, String regex) {
+        List<String> matches = new ArrayList<>();
+        Matcher matcher = Pattern.compile(regex)
+                .matcher(content);
+
+        while (matcher.find()) {
+            searchClassName(matches, matcher);
+        }
+
+        return matches;
+    }
+
+    private void searchClassName(List<String> matches, Matcher matcher) {
+        List<String> groups = new ArrayList<>(Arrays.asList(
+                matcher.group().split(SPACE_DELIMITER)));
+        normalizeKeywords(groups, SPACE_DELIMITER);
+
+        if (groups.size() >= NORMAL_SIZE) {
+            matches.add(groups.get(SECOND_INDEX).trim());
+        }
+    }
+
+    private Boolean isMethodConstructor(List<String> words, List<String> classes) {
+        return words.stream()
+                .anyMatch(classes::contains);
     }
 
     private Integer getNumOfReservedWords(Boolean isConstructor) {
@@ -293,7 +333,7 @@ public class MethodAttributesAnalysisImpl implements MethodAttributesAnalysis {
                     .map(String::trim)
                     .collect(Collectors.toList());
 
-            normalizeKeywords(words, ", ");
+            normalizeKeywords(words, QOMMA_DELIMITER + SPACE_DELIMITER);
 
             words.stream()
                     .map(this::splitList)
@@ -307,7 +347,7 @@ public class MethodAttributesAnalysisImpl implements MethodAttributesAnalysis {
                 .map(String::trim)
                 .collect(Collectors.toList());
 
-        normalizeKeywords(words, " ");
+        normalizeKeywords(words, SPACE_DELIMITER);
 
         return words;
     }

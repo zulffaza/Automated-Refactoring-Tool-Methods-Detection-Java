@@ -84,8 +84,16 @@ public class MethodVariableAnalysisImpl implements MethodVariableAnalysis {
     }
 
     private Boolean isPropertyType(String variable) {
-        return VariableHelper.PRIMITIVE_TYPES.contains(variable) ||
+        Boolean isPrimitive = VariableHelper.PRIMITIVE_TYPES
+                .stream()
+                .anyMatch(primitiveType -> isPrimitiveType(primitiveType, variable));
+
+        return isPrimitive ||
                 variableHelper.isClassName(variable);
+    }
+
+    private Boolean isPrimitiveType(String primitiveType, String variable) {
+        return variable.startsWith(primitiveType);
     }
 
     private void savePropertyType(String variable, SaveVariableVA saveVariableVA) {
