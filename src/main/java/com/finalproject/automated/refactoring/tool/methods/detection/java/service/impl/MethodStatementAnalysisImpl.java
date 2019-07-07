@@ -69,7 +69,7 @@ public class MethodStatementAnalysisImpl implements MethodStatementAnalysis {
 
         if (isStatement(character, saveStatementVA, isStatementVA)) {
             saveStatement(character, saveStatementVA);
-        } else if (isEndOfBlock(character, isStatementVA)) {
+        } else if (isEndOfBlock(character, saveStatementVA, isStatementVA)) {
             changeBlock(saveStatementVA);
         }
     }
@@ -244,8 +244,10 @@ public class MethodStatementAnalysisImpl implements MethodStatementAnalysis {
         }
     }
 
-    private Boolean isEndOfBlock(Character character, IsStatementVA isStatementVA) {
-        return !isStatementVA.getEscape().get() && isStatementVA.getStack().empty() &&
+    private Boolean isEndOfBlock(Character character, SaveStatementVA saveStatementVA,
+                                 IsStatementVA isStatementVA) {
+        return !isInsideComments(saveStatementVA) &&
+                !isStatementVA.getEscape().get() && isStatementVA.getStack().empty() &&
                 character.equals(CLOSED_BRACES);
     }
 

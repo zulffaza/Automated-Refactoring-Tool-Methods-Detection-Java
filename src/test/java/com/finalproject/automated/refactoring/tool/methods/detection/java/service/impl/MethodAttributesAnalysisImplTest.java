@@ -180,6 +180,12 @@ public class MethodAttributesAnalysisImplTest {
         doNothing()
                 .when(mergeListHelper)
                 .mergeListOfString(
+                        eq(Arrays.asList("class", "Filename", "implements", "Serializable")),
+                        eq(new ArrayList<>()),
+                        eq(" "));
+        doNothing()
+                .when(mergeListHelper)
+                .mergeListOfString(
                         eq(Arrays.asList("@NonNull String name", "@NonNull String extension")),
                         eq(new ArrayList<>()),
                         eq(", "));
@@ -202,6 +208,12 @@ public class MethodAttributesAnalysisImplTest {
                 .when(mergeListHelper)
                 .mergeListOfString(
                         eq(Arrays.asList("public", "void", "setName")),
+                        eq(new ArrayList<>()),
+                        eq(" "));
+        doNothing()
+                .when(mergeListHelper)
+                .mergeListOfString(
+                        eq(Arrays.asList("class", "Filename", "implements", "Serializable")),
                         eq(new ArrayList<>()),
                         eq(" "));
         doNothing()
@@ -259,6 +271,10 @@ public class MethodAttributesAnalysisImplTest {
                 new ArrayList<>(),
                 " ");
         verifyMergeListOfStringOneTime(
+                Arrays.asList("class", "Filename", "implements", "Serializable"),
+                new ArrayList<>(),
+                " ");
+        verifyMergeListOfStringOneTime(
                 Arrays.asList("@NonNull String name", "@NonNull String extension"),
                 new ArrayList<>(),
                 ", ");
@@ -272,6 +288,10 @@ public class MethodAttributesAnalysisImplTest {
     private void verifyMergeListOfStringNonConstructorMethod() {
         verifyMergeListOfStringOneTime(
                 Arrays.asList("public", "void", "setName"),
+                new ArrayList<>(),
+                " ");
+        verifyMergeListOfStringOneTime(
+                Arrays.asList("class", "Filename", "implements", "Serializable"),
                 new ArrayList<>(),
                 " ");
         verifyMergeListOfStringOneTime(
