@@ -28,6 +28,7 @@ public class MethodVariableAnalysisImpl implements MethodVariableAnalysis {
     private VariableHelper variableHelper;
 
     private static final String GLOBAL_VARIABLE_PREFIX = "this.";
+    private static final String OPEN_SQUARE_BRACES = "[";
     private static final String FINAL_KEYWORD = "final";
     private static final String EMPTY_STRING = "";
 
@@ -93,7 +94,8 @@ public class MethodVariableAnalysisImpl implements MethodVariableAnalysis {
     }
 
     private Boolean isPrimitiveType(String primitiveType, String variable) {
-        return variable.startsWith(primitiveType);
+        return variable.equals(primitiveType) ||
+                variable.startsWith(primitiveType + OPEN_SQUARE_BRACES);
     }
 
     private void savePropertyType(String variable, SaveVariableVA saveVariableVA) {
