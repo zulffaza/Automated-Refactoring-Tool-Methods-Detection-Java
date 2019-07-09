@@ -65,9 +65,9 @@ public class StartIndexAnalysisImpl implements StartIndexAnalysis {
     }
 
     private Boolean isComments(String content, Integer index, String character) {
-        String nextCharacter = nextCharacter(content, index + NEXT_INDEX);
+        String nextCharacter = nextCharacter(content, index - NEXT_INDEX);
 
-        if (character.equals(MULTI_LINE_COMMENTS_START)) {
+        if (nextCharacter.equals(MULTI_LINE_COMMENTS_START)) {
             return Boolean.TRUE;
         } else {
             return isOneLineComments(character, nextCharacter);
