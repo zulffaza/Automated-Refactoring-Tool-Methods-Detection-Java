@@ -293,20 +293,24 @@ public class MethodAttributesAnalysisImpl implements MethodAttributesAnalysis {
             return TWO_RESERVED_WORDS;
     }
 
-    private void saveKeywords(List<String> words, Integer numOfKeywords, MethodModel methodModel) {
+    private void saveKeywords(List<String> words, Integer numOfKeywords,
+                              MethodModel methodModel) throws IllegalArgumentException {
+        checkNewKeyword(words);
+
         words.stream()
                 .limit(numOfKeywords)
                 .forEach(methodModel.getKeywords()::add);
     }
 
-    private void setReturnType(MethodModel methodModel, Integer maxKeywords,
-                               List<String> words) throws IllegalArgumentException {
-        String returnType = words.get(maxKeywords);
-
-        if (returnType.equals(NEW_KEYWORD)) {
+    private void checkNewKeyword(List<String> words) throws IllegalArgumentException {
+        if (words.contains(NEW_KEYWORD)) {
             throw new IllegalArgumentException(ANONYMOUS_CLASS_EXCEPTION_MESSAGE);
         }
+    }
 
+    private void setReturnType(MethodModel methodModel, Integer maxKeywords,
+                               List<String> words) {
+        String returnType = words.get(maxKeywords);
         methodModel.setReturnType(returnType);
     }
 
