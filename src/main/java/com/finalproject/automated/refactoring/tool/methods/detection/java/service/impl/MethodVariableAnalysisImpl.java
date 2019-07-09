@@ -144,8 +144,10 @@ public class MethodVariableAnalysisImpl implements MethodVariableAnalysis {
     }
 
     private void saveGlobalVariable(String variable, MethodModel methodModel) {
-        methodModel.getGlobalVariables()
-                .add(variable);
+        if (!methodModel.getGlobalVariables().contains(variable)) {
+            methodModel.getGlobalVariables()
+                    .add(variable);
+        }
     }
 
     private void checkVariableDomain(String variable, SaveVariableVA saveVariableVA) {
@@ -195,7 +197,8 @@ public class MethodVariableAnalysisImpl implements MethodVariableAnalysis {
     }
 
     private Boolean isContainsVariable(String variable, PropertyModel propertyModel) {
-        return propertyModel.getName().equals(variable);
+        return propertyModel.getName() != null &&
+                propertyModel.getName().equals(variable);
     }
 
     private Boolean isLocalVariable(String variable, MethodModel methodModel) {

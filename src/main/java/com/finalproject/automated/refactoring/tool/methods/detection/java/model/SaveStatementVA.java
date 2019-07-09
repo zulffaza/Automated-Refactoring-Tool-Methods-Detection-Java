@@ -22,6 +22,10 @@ public class SaveStatementVA {
     @Builder.Default
     private Stack<List<StatementModel>> statements = new Stack<>();
 
+    private Character character;
+
+    private Character nextCharacter;
+
     private Integer index;
 
     private Integer iterationIndex;

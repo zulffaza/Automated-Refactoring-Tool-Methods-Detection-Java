@@ -65,25 +65,32 @@ public class MethodStatementAnalysisImpl implements MethodStatementAnalysis {
     private void checkStatement(SaveStatementVA saveStatementVA, IsStatementVA isStatementVA) {
         Character character = saveStatementVA.getBody()
                 .charAt(saveStatementVA.getIterationIndex());
+        saveStatementVA.setCharacter(character);
         saveStatementVA.setEndStatementIndex(saveStatementVA.getIterationIndex());
 
-        if (isStatement(character, saveStatementVA, isStatementVA)) {
-            saveStatement(character, saveStatementVA);
-        } else if (isEndOfBlock(character, saveStatementVA, isStatementVA)) {
-            changeBlock(saveStatementVA);
+        if (isStatement(saveStatementVA, isStatementVA)) {
+            saveStatement(saveStatementVA);
+        } else {
+            changeBlock(saveStatementVA, isStatementVA);
         }
     }
 
-    private Boolean isStatement(Character character, SaveStatementVA saveStatementVA,
-                                IsStatementVA isStatementVA) {
+    private Boolean isStatement(SaveStatementVA saveStatementVA, IsStatementVA isStatementVA) {
         Character nextCharacter = getNextCharacter(saveStatementVA);
+        saveStatementVA.setNextCharacter(nextCharacter);
 
-        if (isComments(character, nextCharacter, isStatementVA)) {
-            return flagComments(character, nextCharacter, saveStatementVA);
-        } else if (isCloseComments(character, nextCharacter, isStatementVA)) {
-            return removeFlagComments(saveStatementVA);
+        if (isInsideComments(saveStatementVA)) {
+            return checkEndComments(saveStatementVA, isStatementVA);
         } else {
-            return checkIfIsStatement(character, saveStatementVA, isStatementVA);
+            return checkComments(saveStatementVA, isStatementVA);
+        }
+    }
+
+    private Boolean checkComments(SaveStatementVA saveStatementVA, IsStatementVA isStatementVA) {
+        if (isComments(saveStatementVA, isStatementVA)) {
+            return flagComments(saveStatementVA);
+        } else {
+            return statementHelper.isStatement(saveStatementVA.getCharacter(), isStatementVA);
         }
     }
 
@@ -96,51 +103,73 @@ public class MethodStatementAnalysisImpl implements MethodStatementAnalysis {
         }
     }
 
-    private Boolean isComments(Character character, Character nextCharacter,
-                               IsStatementVA isStatementVA) {
-        return (isStatementVA.getStack().isEmpty() && !isStatementVA.getEscape().get()) &&
-                (isOneLineCommentsOpening(character, nextCharacter) ||
-                        isMultiLineCommentsOpening(character, nextCharacter));
+    private Boolean isInsideComments(SaveStatementVA saveStatementVA) {
+        return saveStatementVA.getIsOneLineComments() ||
+                saveStatementVA.getIsMultiLineComments();
     }
 
-    private Boolean isOneLineCommentsOpening(Character character, Character nextCharacter) {
-        return character.equals(COMMENTS_START_CHARACTER) &&
-                nextCharacter != null &&
-                nextCharacter.equals(COMMENTS_START_CHARACTER);
+    private Boolean isComments(SaveStatementVA saveStatementVA, IsStatementVA isStatementVA) {
+        return isValidSearch(isStatementVA) &&
+                (isOneLineCommentsOpening(saveStatementVA) ||
+                        isMultiLineCommentsOpening(saveStatementVA));
     }
 
-    private Boolean isMultiLineCommentsOpening(Character character, Character nextCharacter) {
-        return character.equals(COMMENTS_START_CHARACTER) &&
-                nextCharacter != null &&
-                nextCharacter.equals(MULTI_LINE_COMMENTS_START_CHARACTER);
+    private Boolean isValidSearch(IsStatementVA isStatementVA) {
+        return isStatementVA.getStack().isEmpty() &&
+                !isStatementVA.getEscape().get();
     }
 
-    private Boolean flagComments(Character character, Character nextCharacter,
-                                 SaveStatementVA saveStatementVA) {
-        saveStatementVA.setIsOneLineComments(isOneLineCommentsOpening(character, nextCharacter));
-        saveStatementVA.setIsMultiLineComments(isMultiLineCommentsOpening(character, nextCharacter));
+    private Boolean isOneLineCommentsOpening(SaveStatementVA saveStatementVA) {
+        return saveStatementVA.getCharacter().equals(COMMENTS_START_CHARACTER) &&
+                saveStatementVA.getNextCharacter() != null &&
+                saveStatementVA.getNextCharacter().equals(COMMENTS_START_CHARACTER);
+    }
+
+    private Boolean isMultiLineCommentsOpening(SaveStatementVA saveStatementVA) {
+        return saveStatementVA.getCharacter().equals(COMMENTS_START_CHARACTER) &&
+                saveStatementVA.getNextCharacter() != null &&
+                saveStatementVA.getNextCharacter().equals(MULTI_LINE_COMMENTS_START_CHARACTER);
+    }
+
+    private Boolean flagComments(SaveStatementVA saveStatementVA) {
+        if (isOneLineCommentsOpening(saveStatementVA)) {
+            saveStatementVA.setIsOneLineComments(Boolean.TRUE);
+        }
+
+        if (isMultiLineCommentsOpening(saveStatementVA)) {
+            saveStatementVA.setIsMultiLineComments(Boolean.TRUE);
+        }
 
         return Boolean.FALSE;
     }
 
-    private Boolean isCloseComments(Character character, Character nextCharacter,
-                                    IsStatementVA isStatementVA) {
-        return (isStatementVA.getStack().isEmpty() && !isStatementVA.getEscape().get()) &&
-                (isOneLineCommentsClosing(character) ||
-                        isMultiLineCommentsClosing(character, nextCharacter));
+    private Boolean checkEndComments(SaveStatementVA saveStatementVA, IsStatementVA isStatementVA) {
+        if (isCloseComments(saveStatementVA, isStatementVA)) {
+            removeFlagComments(saveStatementVA);
+        }
+
+        return Boolean.FALSE;
     }
 
-    private Boolean isOneLineCommentsClosing(Character character) {
-        return character.equals(NEW_LINE);
+    private Boolean isCloseComments(SaveStatementVA saveStatementVA, IsStatementVA isStatementVA) {
+        return isValidSearch(isStatementVA) &&
+                (isOneLineCommentsClosing(saveStatementVA) ||
+                        isMultiLineCommentsClosing(saveStatementVA));
     }
 
-    private Boolean isMultiLineCommentsClosing(Character character, Character nextCharacter) {
-        return character.equals(MULTI_LINE_COMMENTS_START_CHARACTER) &&
-                nextCharacter != null &&
-                nextCharacter.equals(COMMENTS_START_CHARACTER);
+    private Boolean isOneLineCommentsClosing(SaveStatementVA saveStatementVA) {
+        return saveStatementVA.getIsOneLineComments() &&
+                saveStatementVA.getCharacter().equals(NEW_LINE);
     }
 
-    private Boolean removeFlagComments(SaveStatementVA saveStatementVA) {
+    private Boolean isMultiLineCommentsClosing(SaveStatementVA saveStatementVA) {
+        return saveStatementVA.getIsMultiLineComments() &&
+                saveStatementVA.getCharacter().equals(MULTI_LINE_COMMENTS_START_CHARACTER) &&
+                saveStatementVA.getNextCharacter() != null &&
+                saveStatementVA.getNextCharacter().equals(COMMENTS_START_CHARACTER);
+    }
+
+    private void removeFlagComments(SaveStatementVA saveStatementVA) {
         if (saveStatementVA.getIsOneLineComments()) {
             saveStatementVA.setIsOneLineComments(Boolean.FALSE);
         }
@@ -148,27 +177,11 @@ public class MethodStatementAnalysisImpl implements MethodStatementAnalysis {
         if (saveStatementVA.getIsMultiLineComments()) {
             saveStatementVA.setIsMultiLineComments(Boolean.FALSE);
         }
-
-        return Boolean.FALSE;
     }
 
-    private Boolean checkIfIsStatement(Character character, SaveStatementVA saveStatementVA,
-                                       IsStatementVA isStatementVA) {
-        if (!isInsideComments(saveStatementVA)) {
-            return statementHelper.isStatement(character, isStatementVA);
-        } else {
-            return Boolean.FALSE;
-        }
-    }
-
-    private Boolean isInsideComments(SaveStatementVA saveStatementVA) {
-        return saveStatementVA.getIsOneLineComments() ||
-                saveStatementVA.getIsMultiLineComments();
-    }
-
-    private void saveStatement(Character character, SaveStatementVA saveStatementVA) {
+    private void saveStatement(SaveStatementVA saveStatementVA) {
         String statement = createStatement(saveStatementVA);
-        StatementModel statementModel = createStatementModel(character, statement, saveStatementVA);
+        StatementModel statementModel = createStatementModel(statement, saveStatementVA);
         statementModel.setIndex(saveStatementVA.getIndex());
 
         saveStatementVA.getStatements()
@@ -196,15 +209,14 @@ public class MethodStatementAnalysisImpl implements MethodStatementAnalysis {
         saveStatementVA.setStartStatementIndex(realStartIndex);
     }
 
-    private StatementModel createStatementModel(Character character, String statement,
-                                                SaveStatementVA saveStatementVA) {
+    private StatementModel createStatementModel(String statement, SaveStatementVA saveStatementVA) {
         StatementModel statementModel = null;
 
-        if (character.equals(SEMICOLON)) {
+        if (saveStatementVA.getCharacter().equals(SEMICOLON)) {
             statementModel = buildStatementModel(statement);
         }
 
-        if (character.equals(OPEN_BRACES)) {
+        if (saveStatementVA.getCharacter().equals(OPEN_BRACES)) {
             statementModel = buildBlockModel(statement);
         }
 
@@ -244,16 +256,17 @@ public class MethodStatementAnalysisImpl implements MethodStatementAnalysis {
         }
     }
 
-    private Boolean isEndOfBlock(Character character, SaveStatementVA saveStatementVA,
-                                 IsStatementVA isStatementVA) {
-        return !isInsideComments(saveStatementVA) &&
-                !isStatementVA.getEscape().get() && isStatementVA.getStack().empty() &&
-                character.equals(CLOSED_BRACES);
+    private void changeBlock(SaveStatementVA saveStatementVA, IsStatementVA isStatementVA) {
+        if (isEndOfBlock(saveStatementVA, isStatementVA)) {
+            saveStatementVA.getStatements().pop();
+            saveClosedBraces(saveStatementVA);
+        }
     }
 
-    private void changeBlock(SaveStatementVA saveStatementVA) {
-        saveStatementVA.getStatements().pop();
-        saveClosedBraces(saveStatementVA);
+    private Boolean isEndOfBlock(SaveStatementVA saveStatementVA, IsStatementVA isStatementVA) {
+        return !isInsideComments(saveStatementVA) &&
+                !isStatementVA.getEscape().get() && isStatementVA.getStack().empty() &&
+                saveStatementVA.getCharacter().equals(CLOSED_BRACES);
     }
 
     private void saveClosedBraces(SaveStatementVA saveStatementVA) {
