@@ -33,7 +33,7 @@ public class MethodAttributesAnalysisImpl implements MethodAttributesAnalysis {
 
     private static final String OPEN_PARENTHESES = "(";
     private static final String CLOSE_PARENTHESES = ")";
-    private static final String CLASS_REGEX = "(?:class)+(?:\\s)+(?:([A-Z_$])[a-zA-Z0-9_$<>,\\s]+)";
+    private static final String CLASS_REGEX = "(?:class|interface|enum)+(?:\\s)+(?:([A-Z_$])[a-zA-Z0-9_$<>,\\s]+)";
     private static final String ANONYMOUS_CLASS_REGEX = "(?:new)+(?:\\s)+(?:([A-Z_$])[a-zA-Z0-9_$<>,\\s]+)+(?:(?:[\\[\\]])|((?:\\()+(?:[@\\w\\[\\]<>\\(\\)=\".,\\s])*(?:\\))))+(\\{)+";
     private static final String ONE_LINE_COMMENT_REGEX = "^(?://)+(?:[ \\t\\S])*";
     private static final String MULTI_LINE_COMMENT_REGEX = "^(?:/\\*)+(?:[\\s\\S])*(?:\\*/)+";
