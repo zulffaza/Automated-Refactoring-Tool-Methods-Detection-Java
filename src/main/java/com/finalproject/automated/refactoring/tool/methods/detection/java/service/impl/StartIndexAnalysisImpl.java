@@ -16,6 +16,8 @@ import java.util.Stack;
 @Service
 public class StartIndexAnalysisImpl implements StartIndexAnalysis {
 
+    private static final String COMMENTS_START = "/";
+    private static final String MULTI_LINE_COMMENTS_START = "*";
     private static final String OPEN_PARENTHESES = "(";
     private static final String CLOSE_PARENTHESES = ")";
     private static final String OPEN_BRACES = "{";
@@ -29,19 +31,26 @@ public class StartIndexAnalysisImpl implements StartIndexAnalysis {
         Integer index = indexModel.getStart();
         Stack<String> stack = new Stack<>();
 
-        while (!isValid(stack, nextCharacter(content, index)))
+        while (!isValid(content, index, stack)) {
             index = reduceIndex(index);
+        }
 
         indexModel.setStart(raiseIndex(index));
     }
 
-    private String nextCharacter(String content, Integer index) {
-        return content.substring(index, index + NEXT_INDEX);
+    private Boolean isValid(String content, Integer index, Stack<String> stack) {
+        String character = nextCharacter(content, index);
+        fillStack(stack, character);
+
+        if (isComments(content, index, character)) {
+            return Boolean.TRUE;
+        } else {
+            return validate(stack, character);
+        }
     }
 
-    private Boolean isValid(Stack<String> stack, String character) {
-        fillStack(stack, character);
-        return validate(stack, character);
+    private String nextCharacter(String content, Integer index) {
+        return content.substring(index, index + NEXT_INDEX);
     }
 
     private void fillStack(Stack<String> stack, String character) {
@@ -55,15 +64,32 @@ public class StartIndexAnalysisImpl implements StartIndexAnalysis {
         }
     }
 
+    private Boolean isComments(String content, Integer index, String character) {
+        String nextCharacter = nextCharacter(content, index + NEXT_INDEX);
+
+        if (character.equals(MULTI_LINE_COMMENTS_START)) {
+            return Boolean.TRUE;
+        } else {
+            return isOneLineComments(character, nextCharacter);
+        }
+    }
+
+    private Boolean isOneLineComments(String character, String nextCharacter) {
+        return character.equals(COMMENTS_START) &&
+                nextCharacter.equals(COMMENTS_START);
+    }
+
     private Boolean validate(Stack<String> stack, String character) {
-        if (!stack.empty())
+        if (!stack.empty()) {
             return Boolean.FALSE;
-        else
+        } else {
             return isEOS(character);
+        }
     }
 
     private Boolean isEOS(String character) {
-        return character.equals(SEMICOLON) || character.equals(CLOSE_BRACES) || character.equals(OPEN_BRACES);
+        return character.equals(SEMICOLON) || character.equals(CLOSE_BRACES) ||
+                character.equals(OPEN_BRACES);
     }
 
     private Integer reduceIndex(Integer index) {
